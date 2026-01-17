@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base href="$FLUTTER_BASE_HREF" />
+
+  <meta charset="UTF-8" />
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
+  <meta name="description" content="Dreamflow Frontend V2" />
+  <meta name="theme-color" content="#1d2024" />
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Dreamflow" />
+
+  <title>Dreamflow</title>
+
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #1d2024;
+    }
+
+    /* Light mode */
+    @media (prefers-color-scheme: light) {
+      body {
+        background-color: #f8f8f8;
+      }
+    }
+
+    .loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100vh;
+    }
+
+    .loader .logo {
+      animation: pulse 2s ease-in-out infinite;
+      transform: translateX(20px);
+      fill: white;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .loader .logo {
+        fill: black;
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        filter: blur(0px);
+        opacity: 1;
+      }
+      50% {
+        filter: blur(8px);
+        opacity: 0.5;
+      }
+      100% {
+        filter: blur(0px);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Loading animation -->
+  <div class="loader">
+    <svg class="logo" width="100" height="100" viewBox="0 0 40 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M21.1828 12.439L16.5099 6.5486C16.1961 6.15294 15.6364 6.05341 15.2054 6.3166L1.33294 14.7868C0.901187 15.0504 0.734302 15.5949 0.944193 16.0552L7.20954 29.7943C7.37207 30.1507 7.7277 30.3794 8.1194 30.3794H22.7042C23.2565 30.3794 23.7042 29.9317 23.7042 29.3794V24.654C23.7042 24.1018 24.1519 23.654 24.7042 23.654H29.5268C29.9835 23.654 30.3822 23.3446 30.4956 22.9022L35.8601 1.96108C36.0221 1.32854 35.5443 0.712921 34.8913 0.712921H27.1983C26.7443 0.712921 26.3473 1.0187 26.2314 1.45761L21.0128 21.2199C20.8969 21.6588 20.4999 21.9646 20.0459 21.9646H11.4469C10.4403 21.9646 10.0645 20.6451 10.9199 20.1147L20.9263 13.9104C21.4346 13.5953 21.5544 12.9075 21.1828 12.439Z" />
+    </svg>
+  </div>
+
+  <script>
+    // Prevent default browser actions on key combinations
+    window.addEventListener('keydown', function (e) {
+      if (e.metaKey || e.ctrlKey) {
+        switch (e.key) {
+          case 'z':
+          case 'Z':
+          case 'f':
+          case 'F':
+          case 'p':
+          case 'P':
+            e.preventDefault();
+            break;
+        }
+      }
+    });
+
+    // Hide loading animation when Flutter is ready
+    window.addEventListener('load', function () {
+      let attempts = 0;
+      const maxAttempts = 50;
+
+      const checkFlutterReady = function () {
+        attempts++;
+        const flutterApp = document.querySelector('flt-glass-pane') ||
+          document.querySelector('#flutter_target') ||
+          document.querySelector('[data-flutter-view]');
+
+        if (flutterApp || attempts >= maxAttempts) {
+          const loader = document.querySelector('.loader');
+          if (loader) {
+            loader.style.opacity = '0';
+            loader.style.transition = 'opacity 0.3s ease-out';
+            setTimeout(function () {
+              loader.style.display = 'none';
+            }, 300);
+          }
+        } else {
+          setTimeout(checkFlutterReady, 100);
+        }
+      };
+
+      checkFlutterReady();
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+  <script src="nav_fix.js"></script>
+</body>
+
+</html>

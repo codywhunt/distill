@@ -1,0 +1,4 @@
+# melos_managed_dependency_overrides: distill_ds
+dependency_overrides:
+  distill_ds:
+    path: ..

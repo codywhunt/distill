@@ -1,0 +1,54 @@
+name: distill_editor
+description: "Distill Editor - Next generation editor"
+
+publish_to: "none"
+
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+
+  # Routing
+  go_router: ^14.8.1
+
+  # State management
+  provider: ^6.1.2
+
+  # Design system v2
+  distill_ds:
+    path: ../distill_ds
+
+  # Canvas rendering
+  distill_canvas:
+    path: ../distill_canvas
+
+  # Persistence
+  shared_preferences: ^2.5.3
+
+  # HTTP for AI API calls
+  http: ^1.4.0
+
+  # Icons
+  lucide_icons_flutter: ^3.1.9
+
+  # Color picker
+  flutter_colorpicker: ^1.1.0
+
+dev_dependencies:
+
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/bezels/
+    - ../distill_ds/assets/svgs/
+
