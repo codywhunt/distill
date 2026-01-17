@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,9 @@ import 'package:provider/provider.dart';
 import 'command.dart';
 import '../modules/canvas/canvas_state.dart';
 import '../src/free_design/ai/ai.dart';
+import '../src/free_design/persistence/document_persistence_service.dart';
+import '../src/free_design/store/editor_document_store.dart';
+import '../workspace/components/confirm_dialog.dart';
 import '../workspace/workspace_state.dart';
 import '../workspace/workspace_layout_state.dart';
 
@@ -230,6 +234,165 @@ final _globalCommands = [
 
       final canvasState = context.read<CanvasState>();
       await executeAiGenerateFrame(context, canvasState.store, aiService);
+    },
+  ),
+
+  // Document commands
+  Command(
+    id: 'doc.new',
+    label: 'New Document',
+    icon: LucideIcons.filePlus,
+    keywords: ['new', 'create', 'empty', 'document', 'project', 'clear'],
+    scopes: ['canvas'],
+    shortcut: const CommandShortcut(key: LogicalKeyboardKey.keyN, meta: true),
+    execute: (context) async {
+      final canvasState = context.read<CanvasState>();
+      await canvasState.documentController.newDocument();
+    },
+  ),
+  Command(
+    id: 'doc.save',
+    label: 'Save Document',
+    icon: LucideIcons.save,
+    keywords: ['save', 'export', 'file', 'download'],
+    scopes: ['canvas'],
+    shortcut: const CommandShortcut(key: LogicalKeyboardKey.keyS, meta: true),
+    execute: (context) async {
+      final canvasState = context.read<CanvasState>();
+      final success = await canvasState.documentController.saveDocument();
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Document saved'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    },
+  ),
+  Command(
+    id: 'doc.save_as',
+    label: 'Save Document As...',
+    icon: LucideIcons.save,
+    keywords: ['save', 'as', 'export', 'file', 'copy', 'download'],
+    scopes: ['canvas'],
+    shortcut: const CommandShortcut(
+      key: LogicalKeyboardKey.keyS,
+      meta: true,
+      shift: true,
+    ),
+    execute: (context) async {
+      final canvasState = context.read<CanvasState>();
+      final success =
+          await canvasState.documentController.saveDocument(saveAs: true);
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Document saved'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    },
+  ),
+  Command(
+    id: 'doc.open',
+    label: 'Open Document',
+    icon: LucideIcons.folderOpen,
+    keywords: ['open', 'load', 'import', 'file', 'upload'],
+    scopes: ['canvas'],
+    shortcut: const CommandShortcut(key: LogicalKeyboardKey.keyO, meta: true),
+    execute: (context) async {
+      final canvasState = context.read<CanvasState>();
+      try {
+        await canvasState.documentController.loadDocument();
+      } on DocumentLoadException catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    },
+  ),
+
+  // Frame commands
+  Command(
+    id: 'frame.new',
+    label: 'New Frame',
+    icon: LucideIcons.squarePlus,
+    keywords: ['new', 'create', 'frame', 'artboard', 'screen'],
+    scopes: ['canvas'],
+    // Use Cmd+Option+N on web to avoid browser conflict with Cmd+Shift+N
+    shortcut: kIsWeb
+        ? const CommandShortcut(
+            key: LogicalKeyboardKey.keyN,
+            meta: true,
+            alt: true,
+          )
+        : const CommandShortcut(
+            key: LogicalKeyboardKey.keyN,
+            meta: true,
+            shift: true,
+          ),
+    execute: (context) {
+      final canvasState = context.read<CanvasState>();
+      final controller = canvasState.canvasController;
+      if (controller == null) return;
+
+      // Get viewport center in world coordinates
+      final viewSize = MediaQuery.sizeOf(context);
+      final viewCenter = Offset(viewSize.width / 2, viewSize.height / 2);
+      final worldCenter = controller.viewToWorld(viewCenter);
+
+      // Create frame centered at viewport
+      const frameSize = Size(375, 812);
+      final position =
+          worldCenter - Offset(frameSize.width / 2, frameSize.height / 2);
+
+      canvasState.store.createEmptyFrame(position: position, size: frameSize);
+    },
+  ),
+  Command(
+    id: 'frame.delete',
+    label: 'Delete Frame',
+    icon: LucideIcons.trash2,
+    keywords: ['delete', 'remove', 'frame', 'artboard'],
+    scopes: ['canvas'],
+    // Use Delete key (not Backspace) to avoid browser back navigation
+    shortcut: const CommandShortcut(key: LogicalKeyboardKey.delete),
+    isEnabled: (context) {
+      final canvasState = context.read<CanvasState>();
+      return canvasState.selectedFrameIds.isNotEmpty;
+    },
+    execute: (context) async {
+      final canvasState = context.read<CanvasState>();
+      final frameIds = canvasState.selectedFrameIds.toList();
+      if (frameIds.isEmpty) return;
+
+      // Get frame names for confirmation message
+      final frameNames = frameIds
+          .map((id) => canvasState.document.frames[id]?.name ?? 'Unknown')
+          .join(', ');
+
+      final confirmed = await showConfirmDialog(
+        context,
+        title: frameIds.length == 1
+            ? "Delete '$frameNames'?"
+            : 'Delete ${frameIds.length} frames?',
+        message: 'This will remove the frame(s) and all layers inside.',
+        confirmLabel: 'Delete',
+        isDestructive: true,
+      );
+
+      if (confirmed && context.mounted) {
+        for (final frameId in frameIds) {
+          canvasState.store.deleteFrameAndSubtree(frameId);
+        }
+      }
     },
   ),
 ];

@@ -1,4 +1,5 @@
 import 'package:distill_canvas/infinite_canvas.dart';
+import 'package:distill_ds/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +11,7 @@ import '../../workspace/components/panel_container.dart';
 import '../../workspace/workspace_layout_state.dart';
 import '../../workspace/workspace_state.dart';
 import 'canvas_state.dart';
+import 'widgets/frame_list_panel.dart';
 import 'widgets/widget_tree_panel.dart';
 import 'widgets/widget_tree_state.dart';
 
@@ -51,7 +53,21 @@ class _CanvasLeftPanelState extends State<CanvasLeftPanel> {
         panelSide: PanelSide.left,
         onToggle: () => layout.toggleLeftPanel(ModuleType.canvas),
       ),
-      child: WidgetTreePanel(treeState: _treeState),
+      child: Column(
+        children: [
+          // Frames section (collapsible, above layers)
+          const FrameListPanel(),
+          // Divider
+          Container(
+            height: 1,
+            color: context.colors.overlay.overlay10,
+          ),
+          // Layers section (takes remaining space)
+          Expanded(
+            child: WidgetTreePanel(treeState: _treeState),
+          ),
+        ],
+      ),
     );
   }
 }

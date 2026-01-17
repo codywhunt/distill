@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import '../../src/free_design/canvas/drag/drag.dart';
 import '../../src/free_design/free_design.dart'
     hide DragSession, DragMode, ResizeHandle, DropPreview, DropIntent;
+import '../../src/free_design/persistence/document_controller.dart';
+import '../../src/free_design/persistence/document_persistence_service.dart';
 import 'mock_frames.dart';
 
 /// Spatial index bounds for the infinite canvas.
@@ -87,11 +89,15 @@ class CanvasState extends ChangeNotifier {
   /// Callback to request prompt box focus.
   VoidCallback? onRequestPromptFocus;
 
+  /// Document controller for save/load/new operations.
+  late final DocumentController documentController;
+
   CanvasState({
     required EditorDocumentStore store,
     TokenResolver? tokenResolver,
     SnapEngine snapEngine = const SnapEngine(),
     ExpandedSceneBuilder expander = const ExpandedSceneBuilder(),
+    DocumentPersistenceService? persistenceService,
   }) : _store = store,
        // Use document theme for token resolution, or provided resolver
        _tokenResolver =
@@ -102,13 +108,20 @@ class CanvasState extends ChangeNotifier {
     _compiler = RenderCompiler(tokens: _tokenResolver);
     _store.addListener(_onStoreChanged);
     _rebuildSpatialIndex();
+
+    // Initialize document controller
+    documentController = DocumentController(
+      store: _store,
+      persistence: persistenceService ?? DocumentPersistenceService(),
+      onDocumentChanged: _onDocumentReplaced,
+    );
   }
 
   /// Create a demo canvas state with mock data.
-  factory CanvasState.demo() {
+  factory CanvasState.demo({DocumentPersistenceService? persistenceService}) {
     final doc = _createDemoDocument();
     final store = EditorDocumentStore(document: doc);
-    return CanvasState(store: store);
+    return CanvasState(store: store, persistenceService: persistenceService);
   }
 
   /// Create a demo document with sample frames and nodes.
@@ -1239,6 +1252,39 @@ class CanvasState extends ChangeNotifier {
   // ===========================================================================
   // Internals
   // ===========================================================================
+
+  /// Handle full document replacement (new/load operations).
+  ///
+  /// Clears all canvas-specific derived state and rebuilds indexes.
+  void _onDocumentReplaced() {
+    // Clear selection
+    _selection = {};
+
+    // Clear all caches
+    _expandedScenes.clear();
+    _renderCache.clear();
+    _nodeBoundsCache.clear();
+    _outlineCache.clear();
+    _frameLookupsCache.clear();
+
+    // Clear transient state
+    _generatingFrameIds.clear();
+    _updatingFrameIds.clear();
+    _interactModeFrameIds.clear();
+    _hovered = null;
+    _dragSession = null;
+
+    // Rebuild spatial index for new frames
+    _rebuildSpatialIndex();
+
+    // Update token resolver for new theme
+    // Note: _tokenResolver is final, so we rebuild the compiler with new tokens
+    _compiler = RenderCompiler(
+      tokens: TokenResolver(document.theme.tokens),
+    );
+
+    notifyListeners();
+  }
 
   /// Handle store changes.
   void _onStoreChanged() {

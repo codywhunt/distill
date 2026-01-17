@@ -23,12 +23,12 @@ The architecture is sound. The 3-stage pipeline, immutable IR, patch protocol, a
 - Visual feedback during drag is inconsistent
 
 ### Success Criteria
-- [ ] Drag node to new parent on canvas → reparents correctly
-- [ ] Drag node between siblings → reorders correctly
-- [ ] Layer tree drag mirrors canvas behavior
-- [ ] Insertion indicator shows valid drop targets
-- [ ] Invalid drops are prevented (can't drop parent into child)
-- [ ] Undo reverses the operation cleanly
+- [x] Drag node to new parent on canvas → reparents correctly
+- [x] Drag node between siblings → reorders correctly
+- [x] Layer tree drag mirrors canvas behavior
+- [x] Insertion indicator shows valid drop targets
+- [x] Invalid drops are prevented (can't drop parent into child)
+- [x] Undo reverses the operation cleanly
 
 ### Why First
 Can't edit without this. Every other feature depends on reliable node manipulation.

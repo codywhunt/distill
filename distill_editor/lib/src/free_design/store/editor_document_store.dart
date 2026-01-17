@@ -1,7 +1,14 @@
+import 'dart:ui' show Offset, Size;
+
 import 'package:flutter/foundation.dart';
 
 import '../models/editor_document.dart';
+import '../models/frame.dart';
 import '../models/node.dart';
+import '../models/node_layout.dart';
+import '../models/node_props.dart';
+import '../models/node_style.dart';
+import '../models/node_type.dart';
 import '../patch/patch_applier.dart';
 import '../patch/patch_op.dart';
 import '../patch/scene_change_set.dart';
@@ -125,16 +132,27 @@ class EditorDocumentStore extends ChangeNotifier {
   }
 
   /// Replace the entire document.
+  ///
+  /// @deprecated Use [replaceDocument] instead for clearer semantics.
   void setDocument(EditorDocument document) {
-    _document = document;
+    replaceDocument(document);
+  }
+
+  /// Replace the entire document (for load/new).
+  ///
+  /// This is a full reset: clears undo/redo, rebuilds indexes.
+  /// Use this when loading from file or creating a new document.
+  void replaceDocument(EditorDocument newDoc, {bool clearUndo = true}) {
+    _document = newDoc;
     _rebuildParentIndex();
     _pendingChanges = SceneChangeSet(
-      compilationDirty: document.nodes.keys.toSet(),
-      frameDirty: document.frames.keys.toSet(),
+      compilationDirty: newDoc.nodes.keys.toSet(),
+      frameDirty: newDoc.frames.keys.toSet(),
     );
-    // Clear undo/redo stacks when replacing entire document
-    _undoStack.clear();
-    _redoStack.clear();
+    if (clearUndo) {
+      _undoStack.clear();
+      _redoStack.clear();
+    }
     notifyListeners();
   }
 
@@ -328,5 +346,83 @@ extension EditorDocumentStoreExtensions on EditorDocumentStore {
       SetFrameProp(frameId: frameId, path: path, value: value),
       groupId: groupId,
     );
+  }
+
+  /// Delete a frame and all its nodes atomically.
+  ///
+  /// Properly handles undo by detaching only cross-boundary edges
+  /// (edges where parent is in subtree but child is not).
+  void deleteFrameAndSubtree(String frameId) {
+    final frame = document.frames[frameId];
+    if (frame == null) return;
+
+    final patches = <PatchOp>[];
+
+    // 1. Collect all nodes in frame's subtree
+    final subtreeSet = document.getSubtree(frame.rootNodeId);
+    final subtreeList = subtreeSet.toList();
+
+    // 2. Detach only cross-boundary edges (child outside subtree)
+    // This is rare but ensures correctness if nodes somehow reference
+    // nodes outside their frame.
+    for (final id in subtreeList) {
+      final node = document.nodes[id];
+      if (node != null) {
+        for (final childId in node.childIds) {
+          if (!subtreeSet.contains(childId)) {
+            patches.add(DetachChild(parentId: id, childId: childId));
+          }
+        }
+      }
+    }
+
+    // 3. Delete all nodes bottom-up (children before parents)
+    for (final id in subtreeList.reversed) {
+      patches.add(DeleteNode(id));
+    }
+
+    // 4. Remove frame
+    patches.add(RemoveFrame(frameId));
+
+    applyPatches(patches, label: 'Delete frame');
+  }
+
+  /// Create an empty frame at the given position.
+  void createEmptyFrame({
+    required Offset position,
+    Size size = const Size(375, 812),
+    String? name,
+  }) {
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    final frameId = 'frame_$timestamp';
+    final rootNodeId = 'node_${timestamp}_root';
+    final now = DateTime.now();
+    final frameName = name ?? 'Untitled Frame';
+
+    // Root node sized to match frame, positioned at origin (0,0) in local space
+    final rootNode = Node(
+      id: rootNodeId,
+      name: frameName, // Same as frame name
+      type: NodeType.container,
+      props: ContainerProps(),
+      layout: NodeLayout(
+        size: SizeMode.fixed(size.width, size.height),
+      ),
+      style: NodeStyle(fill: SolidFill(const HexColor('#FFFFFF'))),
+    );
+
+    final frame = Frame(
+      id: frameId,
+      name: frameName,
+      rootNodeId: rootNodeId,
+      canvas: CanvasPlacement(position: position, size: size),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    applyPatches([
+      InsertNode(rootNode),
+      InsertFrame(frame),
+    ], label: 'Create frame');
   }
 }
