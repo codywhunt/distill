@@ -78,6 +78,12 @@ class NodeStyle {
         'visible': visible,
       };
 
+  /// Remap any node ID references in this style.
+  ///
+  /// Currently a no-op, but provides a hook for future fields that
+  /// may contain node ID references.
+  NodeStyle remapIds(Map<String, String> idMap) => this;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

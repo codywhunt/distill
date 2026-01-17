@@ -66,6 +66,27 @@ class NodeLayout {
     };
   }
 
+  /// Convenience getter for x position (null if auto-positioned).
+  double? get x => switch (position) {
+        PositionModeAbsolute(:final x) => x,
+        _ => null,
+      };
+
+  /// Convenience getter for y position (null if auto-positioned).
+  double? get y => switch (position) {
+        PositionModeAbsolute(:final y) => y,
+        _ => null,
+      };
+
+  /// Whether this node uses absolute/positioned layout (vs auto-layout).
+  bool get isPositioned => position is PositionModeAbsolute;
+
+  /// Remap any node ID references in this layout.
+  ///
+  /// Currently a no-op, but provides a hook for future fields that
+  /// may contain node ID references (e.g., constraint anchors).
+  NodeLayout remapIds(Map<String, String> idMap) => this;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

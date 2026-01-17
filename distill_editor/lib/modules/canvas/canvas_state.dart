@@ -71,6 +71,10 @@ class CanvasState extends ChangeNotifier {
   /// Currently hovered target.
   DragTarget? _hovered;
 
+  /// Last known pointer position in world coordinates.
+  /// Used for paste-at-cursor functionality.
+  Offset? _lastPointerWorld;
+
   /// Active drag session (null when not dragging).
   DragSession? _dragSession;
 
@@ -159,6 +163,9 @@ class CanvasState extends ChangeNotifier {
 
   /// Currently hovered target.
   DragTarget? get hovered => _hovered;
+
+  /// Last known pointer position in world coordinates.
+  Offset? get lastPointerWorld => _lastPointerWorld;
 
   /// Whether a drag is in progress.
   bool get isDragging => _dragSession != null;
@@ -357,6 +364,15 @@ class CanvasState extends ChangeNotifier {
     if (_hovered == target) return;
     _hovered = target;
     notifyListeners();
+  }
+
+  /// Update the last known pointer position in world coordinates.
+  ///
+  /// Called during mouse move to track cursor position for paste operations.
+  void updatePointerPosition(Offset worldPosition) {
+    _lastPointerWorld = worldPosition;
+    // Don't notify listeners - this is a silent update to avoid
+    // unnecessary rebuilds during mouse movement.
   }
 
   // ===========================================================================

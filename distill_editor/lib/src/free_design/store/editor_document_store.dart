@@ -387,6 +387,39 @@ extension EditorDocumentStoreExtensions on EditorDocumentStore {
     applyPatches(patches, label: 'Delete frame');
   }
 
+  /// Execute paste operation atomically.
+  ///
+  /// Inserts all nodes and attaches roots to the target parent.
+  /// Returns the new root IDs for selection.
+  List<String> executePaste({
+    required List<Node> nodes,
+    required List<String> rootIds,
+    required String targetParentId,
+    int index = -1,
+    String? label,
+  }) {
+    final patches = <PatchOp>[];
+
+    // 1. Insert all nodes
+    for (final node in nodes) {
+      patches.add(InsertNode(node));
+    }
+
+    // 2. Attach roots to target parent
+    for (final rootId in rootIds) {
+      patches.add(AttachChild(
+        parentId: targetParentId,
+        childId: rootId,
+        index: index,
+      ));
+    }
+
+    // 3. Apply atomically
+    applyPatches(patches, label: label ?? 'Paste');
+
+    return rootIds;
+  }
+
   /// Create an empty frame at the given position.
   void createEmptyFrame({
     required Offset position,

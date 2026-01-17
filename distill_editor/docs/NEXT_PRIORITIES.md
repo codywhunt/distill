@@ -48,14 +48,14 @@ Can't edit without this. Every other feature depends on reliable node manipulati
 - Can't delete frames
 
 ### Success Criteria
-- [ ] Create new document (empty canvas)
-- [ ] Save document to file (JSON serialization)
-- [ ] Load document from file
-- [ ] Frame list panel showing all frames
-- [ ] Click frame in list → canvas pans to frame
-- [ ] Double-click frame → edit name inline
-- [ ] Delete frame with confirmation
-- [ ] Create new empty frame at canvas position
+- [x] Create new document (empty canvas)
+- [x] Save document to file (JSON serialization)
+- [x] Load document from file
+- [x] Frame list panel showing all frames
+- [x] Click frame in list → canvas pans to frame
+- [x] Double-click frame → edit name inline
+- [x] Delete frame with confirmation
+- [x] Create new empty frame at canvas position
 
 ### Why Now
 Without this, you can't use the tool for real projects. You're stuck in single-session demos.

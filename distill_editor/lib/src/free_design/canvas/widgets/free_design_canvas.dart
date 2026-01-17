@@ -6,6 +6,11 @@ import 'package:distill_ds/design_system.dart';
 
 import '../../models/models.dart';
 import '../../patch/patch_op.dart';
+import '../../services/clipboard_payload.dart';
+import '../../services/clipboard_service.dart';
+import '../../services/node_remapper.dart';
+import '../../services/selection_roots.dart';
+import '../../store/editor_document_store.dart';
 import '../drag/drag.dart';
 import '../drag_target.dart';
 import '../../../../modules/canvas/canvas_state.dart';
@@ -42,6 +47,9 @@ class FreeDesignCanvas extends StatefulWidget {
 class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
   InfiniteCanvasController? _internalController;
   final _focusNode = FocusNode();
+
+  /// Clipboard service for copy/paste operations.
+  final _clipboardService = ClipboardService();
 
   /// Drop preview builder for computing drop targets.
   static const _dropPreviewBuilder = DropPreviewBuilder();
@@ -357,6 +365,46 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
       return KeyEventResult.handled;
     }
 
+    // Copy - Cmd+C
+    final isCopy =
+        event.logicalKey == LogicalKeyboardKey.keyC &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed);
+    if (isCopy) {
+      _copy();
+      return KeyEventResult.handled;
+    }
+
+    // Cut - Cmd+X
+    final isCut =
+        event.logicalKey == LogicalKeyboardKey.keyX &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed);
+    if (isCut) {
+      _cut();
+      return KeyEventResult.handled;
+    }
+
+    // Paste - Cmd+V
+    final isPaste =
+        event.logicalKey == LogicalKeyboardKey.keyV &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed);
+    if (isPaste) {
+      _paste();
+      return KeyEventResult.handled;
+    }
+
+    // Duplicate - Cmd+D
+    final isDuplicate =
+        event.logicalKey == LogicalKeyboardKey.keyD &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed);
+    if (isDuplicate) {
+      _duplicate();
+      return KeyEventResult.handled;
+    }
+
     return KeyEventResult.ignored;
   }
 
@@ -365,24 +413,270 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
     final selection = widget.state.selection;
     if (selection.isEmpty) return;
 
-    final patches = <PatchOp>[];
+    // Collect what to delete
+    final frameIds = <String>[];
+    final nodeIds = <String>[];
 
     for (final target in selection) {
       switch (target) {
         case FrameTarget(:final frameId):
-          patches.add(RemoveFrame(frameId));
+          frameIds.add(frameId);
 
         case NodeTarget(:final patchTarget):
           // Only delete nodes that can be patched (not inside instances)
           if (patchTarget != null) {
-            patches.add(DeleteNode(patchTarget));
+            nodeIds.add(patchTarget);
           }
       }
     }
 
-    if (patches.isNotEmpty) {
-      widget.state.store.applyPatches(patches);
-      widget.state.deselectAll();
+    // Delete frames using the proper method that handles subtree
+    for (final frameId in frameIds) {
+      widget.state.store.deleteFrameAndSubtree(frameId);
+    }
+
+    // Delete nodes using the proper method that detaches and handles subtree
+    for (final nodeId in nodeIds) {
+      // Skip if this node was part of a deleted frame
+      if (widget.state.document.nodes.containsKey(nodeId)) {
+        widget.state.store.removeNode(nodeId);
+      }
+    }
+
+    widget.state.deselectAll();
+  }
+
+  // === Clipboard Operations ===
+
+  /// Build a clipboard payload from the current selection.
+  ClipboardPayload? _buildClipboardPayload() {
+    final selection = widget.state.selection;
+    if (!canCopy(selection)) return null;
+
+    final document = widget.state.document;
+    final parentIndex = widget.state.store.parentIndex;
+
+    // Get top-level roots (sorted deterministically)
+    final rootIds = getTopLevelRoots(
+      selection: selection,
+      parentIndex: parentIndex,
+      frames: document.frames,
+      nodes: document.nodes,
+    );
+
+    if (rootIds.isEmpty) return null;
+
+    // Collect all nodes in subtrees
+    final nodes = collectSubtree(rootIds, document.nodes);
+
+    // Compute anchor (bounding box top-left)
+    final anchor = computeAnchor(rootIds, document.nodes);
+
+    // Get source frame (for potential same-frame detection)
+    final sourceFrameId = determineTargetFrame(
+      selection: selection,
+      focusedFrameId: null,
+    );
+
+    return ClipboardPayload(
+      sourceDocumentId: document.documentId,
+      sourceFrameId: sourceFrameId,
+      rootIds: rootIds,
+      nodes: nodes,
+      anchor: anchor,
+    );
+  }
+
+  /// Copy selected nodes to clipboard.
+  void _copy() {
+    final payload = _buildClipboardPayload();
+    if (payload == null) return;
+
+    _clipboardService.copy(payload);
+  }
+
+  /// Cut selected nodes (copy + delete).
+  void _cut() {
+    final payload = _buildClipboardPayload();
+    if (payload == null) return;
+
+    _clipboardService.cut(payload);
+    _deleteSelection();
+  }
+
+  /// Paste from clipboard.
+  Future<void> _paste() async {
+    final payload = await _clipboardService.paste();
+    if (payload == null || payload.isEmpty) return;
+
+    _executePaste(payload);
+  }
+
+  /// Duplicate selected nodes (synchronous copy + paste).
+  void _duplicate() {
+    final payload = _buildClipboardPayload();
+    if (payload == null) return;
+
+    // Store in clipboard (internal only, no system clipboard)
+    _clipboardService.markDuplicate();
+
+    _executePaste(payload, isDuplicate: true);
+  }
+
+  /// Execute paste operation with remapped IDs and proper positioning.
+  void _executePaste(ClipboardPayload payload, {bool isDuplicate = false}) {
+    final selection = widget.state.selection;
+    final document = widget.state.document;
+
+    // Determine target frame
+    final targetFrameId = determineTargetFrame(
+      selection: selection,
+      focusedFrameId: null, // TODO: Add focused frame tracking if needed
+    );
+    if (targetFrameId == null) return;
+
+    final targetFrame = document.frames[targetFrameId];
+    if (targetFrame == null) return;
+
+    // Determine target parent and insertion index
+    String? targetParentId;
+    int insertIndex = -1; // -1 means append
+
+    if (isDuplicate) {
+      // For duplicate: paste as sibling (use parent of first root in payload)
+      final firstRootId = payload.rootIds.firstOrNull;
+      if (firstRootId != null) {
+        targetParentId = widget.state.store.getParent(firstRootId);
+
+        // Find index of original node and insert after it
+        if (targetParentId != null) {
+          final parentNode = document.nodes[targetParentId];
+          if (parentNode != null) {
+            final originalIndex = parentNode.childIds.indexOf(firstRootId);
+            if (originalIndex >= 0) {
+              // Insert after the last selected root in the same parent
+              // For multi-select, find the highest index among selected roots
+              int maxIndex = originalIndex;
+              for (final rootId in payload.rootIds) {
+                final idx = parentNode.childIds.indexOf(rootId);
+                if (idx > maxIndex) maxIndex = idx;
+              }
+              insertIndex = maxIndex + 1;
+            }
+          }
+        }
+      }
+      // Fallback to frame root if no parent found
+      targetParentId ??= document.frames[targetFrameId]?.rootNodeId;
+    } else {
+      // For paste: paste INTO selected node, or frame root
+      targetParentId = determineTargetParent(
+        selection: selection,
+        targetFrameId: targetFrameId,
+        frames: document.frames,
+      );
+    }
+
+    if (targetParentId == null) return;
+
+    // Remap IDs to fresh values
+    final remapper = NodeRemapper();
+    var remappedNodes = remapper.remapNodes(payload.nodes);
+    final remappedRootIds = remapper.remapRootIds(payload.rootIds);
+
+    // Calculate position offset for translation
+    final pasteOffset = _calculatePasteOffset(
+      payload: payload,
+      targetFrame: targetFrame,
+      isDuplicate: isDuplicate,
+    );
+
+    // Translate root nodes that are positioned
+    if (pasteOffset != Offset.zero) {
+      remappedNodes = _translateRoots(remappedNodes, remappedRootIds, pasteOffset);
+    }
+
+    // Execute paste
+    final newRootIds = widget.state.store.executePaste(
+      nodes: remappedNodes,
+      rootIds: remappedRootIds,
+      targetParentId: targetParentId,
+      index: insertIndex,
+      label: isDuplicate ? 'Duplicate' : 'Paste',
+    );
+
+    // Select the pasted nodes
+    _selectPastedNodes(newRootIds, targetFrameId);
+  }
+
+  /// Calculate the offset to apply to pasted nodes.
+  Offset _calculatePasteOffset({
+    required ClipboardPayload payload,
+    required Frame targetFrame,
+    required bool isDuplicate,
+  }) {
+    // For duplicate, apply a fixed offset
+    if (isDuplicate) {
+      return const Offset(20, 20);
+    }
+
+    // Check if we have a cursor position
+    final cursorWorld = widget.state.lastPointerWorld;
+    if (cursorWorld != null) {
+      // Convert cursor to frame-local coordinates
+      final cursorLocal = cursorWorld - targetFrame.canvas.position;
+
+      // Offset from anchor to cursor
+      return cursorLocal - payload.anchor;
+    }
+
+    // Default: paste at same position (no offset)
+    return Offset.zero;
+  }
+
+  /// Translate root nodes that have positioned layout.
+  List<Node> _translateRoots(
+    List<Node> nodes,
+    List<String> rootIds,
+    Offset delta,
+  ) {
+    final rootIdSet = rootIds.toSet();
+
+    return nodes.map((node) {
+      // Only translate roots
+      if (!rootIdSet.contains(node.id)) return node;
+
+      // Only translate if positioned (not auto-layout child)
+      if (!node.layout.isPositioned) return node;
+
+      return node.copyWith(
+        layout: node.layout.copyWith(
+          position: PositionModeAbsolute(
+            x: (node.layout.x ?? 0) + delta.dx,
+            y: (node.layout.y ?? 0) + delta.dy,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  /// Select the pasted nodes.
+  void _selectPastedNodes(List<String> nodeIds, String frameId) {
+    if (nodeIds.isEmpty) return;
+
+    // Deselect current selection
+    widget.state.deselectAll();
+
+    // Select all pasted root nodes
+    for (final nodeId in nodeIds) {
+      widget.state.select(
+        NodeTarget(
+          frameId: frameId,
+          expandedId: nodeId,
+          patchTarget: nodeId,
+        ),
+        addToSelection: true,
+      );
     }
   }
 

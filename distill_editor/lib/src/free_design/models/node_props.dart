@@ -20,6 +20,12 @@ sealed class NodeProps {
   }
 
   Map<String, dynamic> toJson();
+
+  /// Remap any node ID references in these props.
+  ///
+  /// Default implementation returns self (no ID references).
+  /// Override in subclasses that contain node ID references.
+  NodeProps remapIds(Map<String, String> idMap) => this;
 }
 
 // =============================================================================
