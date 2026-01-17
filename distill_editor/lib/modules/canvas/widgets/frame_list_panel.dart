@@ -33,12 +33,14 @@ class _FrameListPanelState extends State<FrameListPanel> {
   @override
   Widget build(BuildContext context) {
     final canvasState = context.watch<CanvasState>();
-    final frames = canvasState.document.frames.values.toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final frames =
+        canvasState.document.frames.values.toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        SizedBox(height: context.spacing.xxs),
         // Collapsible header
         _FrameSectionHeader(
           frameCount: frames.length,
@@ -52,18 +54,21 @@ class _FrameListPanelState extends State<FrameListPanel> {
           frames.isEmpty
               ? _buildEmptyState(context)
               : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final frame in frames)
-                      FrameListItem(
-                        frame: frame,
-                        isSelected:
-                            canvasState.selectedFrameIds.contains(frame.id),
-                        onTap: () => _selectAndNavigate(context, frame),
-                        onDelete: () => _confirmDelete(context, frame),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: context.spacing.xxs),
+                  for (final frame in frames)
+                    FrameListItem(
+                      frame: frame,
+                      isSelected: canvasState.selectedFrameIds.contains(
+                        frame.id,
                       ),
-                  ],
-                ),
+                      onTap: () => _selectAndNavigate(context, frame),
+                      onDelete: () => _confirmDelete(context, frame),
+                    ),
+                  SizedBox(height: context.spacing.xxs),
+                ],
+              ),
       ],
     );
   }
@@ -114,7 +119,8 @@ class _FrameListPanelState extends State<FrameListPanel> {
 
     // Create frame centered at viewport
     const frameSize = Size(375, 812);
-    final position = worldCenter - Offset(frameSize.width / 2, frameSize.height / 2);
+    final position =
+        worldCenter - Offset(frameSize.width / 2, frameSize.height / 2);
 
     canvasState.store.createEmptyFrame(position: position, size: frameSize);
   }
@@ -159,7 +165,9 @@ class _FrameSectionHeader extends StatelessWidget {
           children: [
             // Expand/collapse chevron
             Icon(
-              isExpanded ? LucideIcons.chevronDown200 : LucideIcons.chevronRight200,
+              isExpanded
+                  ? LucideIcons.chevronDown200
+                  : LucideIcons.chevronRight200,
               size: 12,
               color: context.colors.foreground.muted,
             ),

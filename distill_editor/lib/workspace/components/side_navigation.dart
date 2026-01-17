@@ -24,12 +24,10 @@ class SideNavigation extends StatelessWidget {
     final currentModule = context.select((WorkspaceState s) => s.currentModule);
 
     // Split modules into top and bottom groups
-    final topModules = ModuleType.values
-        .where((m) => !_bottomModules.contains(m))
-        .toList();
-    final bottomModules = ModuleType.values
-        .where((m) => _bottomModules.contains(m))
-        .toList();
+    final topModules =
+        ModuleType.values.where((m) => !_bottomModules.contains(m)).toList();
+    final bottomModules =
+        ModuleType.values.where((m) => _bottomModules.contains(m)).toList();
 
     return Container(
       width: width,
@@ -41,12 +39,12 @@ class SideNavigation extends StatelessWidget {
       ),
       child: Column(
         children: [
-          SizedBox(height: 16),
+          SizedBox(height: 12),
 
           // Dreamflow logo at top
           const _DreamflowLogo(),
 
-          SizedBox(height: 10),
+          SizedBox(height: 6),
 
           // Search button to open command palette
           _SearchButton(
@@ -138,19 +136,16 @@ class _SideNavIconButton extends StatelessWidget {
         // Determine colors based on selection and interaction state
         final backgroundColor = states.resolve(
           base: isSelected ? colors.overlay.overlay05 : Colors.transparent,
-          hovered: isSelected
-              ? colors.overlay.overlay05
-              : colors.overlay.overlay03,
-          pressed: isSelected
-              ? colors.overlay.overlay05
-              : colors.overlay.overlay10,
+          hovered:
+              isSelected ? colors.overlay.overlay05 : colors.overlay.overlay03,
+          pressed:
+              isSelected ? colors.overlay.overlay05 : colors.overlay.overlay10,
         );
 
         final iconColor = states.resolve(
           base: isSelected ? colors.foreground.primary : colors.foreground.weak,
-          hovered: isSelected
-              ? colors.foreground.primary
-              : colors.foreground.muted,
+          hovered:
+              isSelected ? colors.foreground.primary : colors.foreground.muted,
           disabled: colors.foreground.disabled,
         );
 
@@ -176,14 +171,13 @@ class _DreamflowLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      'assets/svgs/df_logo_small.svg',
-      width: 20,
-      colorFilter: ColorFilter.mode(
-        context.colors.foreground.primary,
-        BlendMode.srcIn,
-      ),
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final logoPath =
+        isDark
+            ? 'packages/distill_ds/assets/logos/distill-logomark-dark.png'
+            : 'packages/distill_ds/assets/logos/distill-logomark-light.png';
+
+    return Image.asset(logoPath, width: 24, height: 24);
   }
 }
 

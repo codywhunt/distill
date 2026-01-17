@@ -54,18 +54,14 @@ class _CanvasLeftPanelState extends State<CanvasLeftPanel> {
         onToggle: () => layout.toggleLeftPanel(ModuleType.canvas),
       ),
       child: Column(
+        spacing: context.spacing.xxs,
         children: [
           // Frames section (collapsible, above layers)
           const FrameListPanel(),
           // Divider
-          Container(
-            height: 1,
-            color: context.colors.overlay.overlay10,
-          ),
+          Container(height: 1, color: context.colors.overlay.overlay10),
           // Layers section (takes remaining space)
-          Expanded(
-            child: WidgetTreePanel(treeState: _treeState),
-          ),
+          Expanded(child: WidgetTreePanel(treeState: _treeState)),
         ],
       ),
     );

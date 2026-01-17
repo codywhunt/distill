@@ -16,15 +16,10 @@ void main() async {
   runApp(const DreamflowApp());
 }
 
-/// Precaches SVG and other assets that should be ready before first paint.
+/// Precaches PNG and other assets that should be ready before first paint.
 Future<void> _precacheAssets() async {
-  // Precache the logo SVG (from distill_ds package)
-  const logoPath = 'packages/distill_ds/assets/svgs/df_logo_small.svg';
-  final loader = SvgAssetLoader(logoPath);
-  await svg.cache.putIfAbsent(
-    loader.cacheKey(null),
-    () => loader.loadBytes(null),
-  );
+  // Logo PNGs will be precached by Flutter's image cache when first loaded
+  // No explicit precaching needed for PNG assets
 }
 
 class DreamflowApp extends StatelessWidget {
