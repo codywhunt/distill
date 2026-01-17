@@ -2,7 +2,7 @@ import 'package:distill_canvas/infinite_canvas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../drag_session.dart';
+import '../drag/drag.dart';
 import '../drag_target.dart' as canvas;
 import '../../../../modules/canvas/canvas_state.dart';
 

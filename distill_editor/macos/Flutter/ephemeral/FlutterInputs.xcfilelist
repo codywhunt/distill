@@ -661,7 +661,7 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/spacing.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/theme.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/typography.dart
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/DOES_NOT_EXIST_RERUN_FOR_WILDCARD250604030
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/DOES_NOT_EXIST_RERUN_FOR_WILDCARD865322939
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-cosmicorange.svg
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-deepblue.svg
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-silver.svg
@@ -711,6 +711,8 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/canvas.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/drag_session.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/drag_target.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/drop_preview.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/drop_preview_engine.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/widgets/frame_renderer.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/widgets/free_design_canvas.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/widgets/insertion_indicator_overlay.dart

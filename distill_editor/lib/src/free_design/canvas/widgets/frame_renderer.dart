@@ -60,7 +60,8 @@ class _FrameRendererState extends State<FrameRenderer> {
 
         // Get reflow offsets from active drag session for sibling animation
         final reflowOffsets =
-            widget.state.dragSession?.reflowOffsets ?? const <String, Offset>{};
+            widget.state.dragSession?.dropPreview?.reflowOffsetsByExpandedId ??
+                const <String, Offset>{};
 
         // Check if this frame is in interact mode
         final isInteractMode = widget.state.isInteractMode(widget.frameId);

@@ -2,7 +2,7 @@ import 'package:distill_canvas/infinite_canvas.dart';
 import 'package:flutter/material.dart';
 import 'package:distill_ds/design_system.dart';
 
-import '../drag_session.dart';
+import '../drag/drag.dart';
 import '../drag_target.dart' as canvas;
 import '../../../../modules/canvas/canvas_state.dart';
 
@@ -53,13 +53,12 @@ class SelectionOverlay extends StatelessWidget {
         IgnorePointer(
           child: Stack(
             children: [
-              // Drop zone highlight (green, dashed) during drag
-              if (state.dragSession != null &&
-                  state.dragSession!.dropTarget != null &&
-                  state.dragSession!.dropFrameId != null)
+              // Drop zone highlight (accent blue) during drag
+              if (state.dragSession?.dropPreview?.isValid == true &&
+                  state.dragSession!.dropPreview!.targetParentDocId != null)
                 _DropZoneHighlight(
-                  frameId: state.dragSession!.dropFrameId!,
-                  nodeId: state.dragSession!.dropTarget!,
+                  frameId: state.dragSession!.dropPreview!.frameId,
+                  nodeId: state.dragSession!.dropPreview!.targetParentDocId!,
                   controller: controller,
                   state: state,
                 ),
@@ -582,8 +581,14 @@ class _UpdatingBorderPainter extends CustomPainter {
   }
 }
 
-/// Green dashed outline for valid drop target during drag.
-class _DropZoneHighlight extends StatelessWidget {
+/// Accent blue highlight for valid drop target during drag.
+///
+/// Per dragdropstyle.md spec:
+/// - 1px stroke @ 60% opacity
+/// - 6% fill (optional, for readability)
+/// - 6px corner radius
+/// - 80-120ms fade in/out animation
+class _DropZoneHighlight extends StatefulWidget {
   const _DropZoneHighlight({
     required this.frameId,
     required this.nodeId,
@@ -597,59 +602,104 @@ class _DropZoneHighlight extends StatelessWidget {
   final CanvasState state;
 
   @override
-  Widget build(BuildContext context) {
-    // Find the expanded ID for this node
-    final scene = state.getExpandedScene(frameId);
-    if (scene == null) return const SizedBox.shrink();
+  State<_DropZoneHighlight> createState() => _DropZoneHighlightState();
+}
 
-    String? expandedId;
-    for (final entry in scene.patchTarget.entries) {
-      if (entry.value == nodeId) {
-        expandedId = entry.key;
-        break;
-      }
-    }
+class _DropZoneHighlightState extends State<_DropZoneHighlight>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 100), // 80-120ms per spec
+      vsync: this,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
+    );
+    _animController.forward(); // Fade in on mount
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use targetParentExpandedId directly from dropPreview (simplified)
+    final dropPreview = widget.state.dragSession?.dropPreview;
+    final expandedId = dropPreview?.targetParentExpandedId;
 
     if (expandedId == null) return const SizedBox.shrink();
 
-    final worldBounds = _getNodeWorldBounds(state, frameId, expandedId);
+    final worldBounds = _getNodeWorldBounds(
+      widget.state,
+      widget.frameId,
+      expandedId,
+    );
     if (worldBounds == null) return const SizedBox.shrink();
 
-    final viewBounds = controller.worldToViewRect(worldBounds);
+    final viewBounds = widget.controller.worldToViewRect(worldBounds);
 
-    return CustomPaint(painter: _DropZonePainter(bounds: viewBounds));
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: CustomPaint(
+        painter: _DropZonePainter(bounds: viewBounds),
+        size: Size.infinite,
+      ),
+    );
   }
 }
 
-/// Painter for drop zone highlighting (green dashed outline).
+/// Painter for drop zone highlighting.
+///
+/// Styling per dragdropstyle.md:
+/// - Accent blue (#007AFF)
+/// - 1px stroke @ 60% opacity (inset 0.5px to draw inside bounds)
+/// - 6% fill for readability
+/// - 6px corner radius
 class _DropZonePainter extends CustomPainter {
   const _DropZonePainter({required this.bounds});
 
   final Rect bounds;
 
+  // Styling tokens (from dragdropstyle.md)
+  static const _accentColor = Color(0xFF007AFF);
+  static const _strokeWidth = 1.0;
+  static const _strokeAlpha = 0.60;
+  static const _fillAlpha = 0.06;
+  static const _cornerRadius = 6.0;
+
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw filled background with transparency for better visibility
+    final rrect = RRect.fromRectAndRadius(
+      bounds,
+      const Radius.circular(_cornerRadius),
+    );
+
+    // 1. Draw subtle fill for readability
     final fillPaint = Paint()
-      ..color = const Color(0xFF00C853).withValues(alpha: 0.08)
+      ..color = _accentColor.withValues(alpha: _fillAlpha)
       ..style = PaintingStyle.fill;
-    canvas.drawRect(bounds, fillPaint);
+    canvas.drawRRect(rrect, fillPaint);
 
-    // Draw glowing border for prominence
-    final glowPaint = Paint()
-      ..color = const Color(0xFF00C853).withValues(alpha: 0.4)
-      ..strokeWidth = 6.0
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0)
-      ..style = PaintingStyle.stroke;
-    canvas.drawRect(bounds, glowPaint);
-
-    // Draw solid border
-    final borderPaint = Paint()
-      ..color =
-          const Color(0xFF00C853) // Green
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawRect(bounds, borderPaint);
+    // 2. Draw outline (inset 0.5px to draw inside bounds, avoid bleed)
+    final strokeRect = bounds.deflate(_strokeWidth / 2);
+    final strokeRRect = RRect.fromRectAndRadius(
+      strokeRect,
+      const Radius.circular(_cornerRadius),
+    );
+    final strokePaint = Paint()
+      ..color = _accentColor.withValues(alpha: _strokeAlpha)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeWidth;
+    canvas.drawRRect(strokeRRect, strokePaint);
   }
 
   @override

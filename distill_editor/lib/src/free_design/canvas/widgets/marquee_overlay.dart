@@ -1,7 +1,7 @@
 import 'package:distill_canvas/infinite_canvas.dart';
 import 'package:flutter/material.dart';
 
-import '../drag_session.dart';
+import '../drag/drag.dart';
 import '../../../../modules/canvas/canvas_state.dart';
 
 /// Blue selection rectangle during marquee drag.

@@ -4,25 +4,13 @@ import 'package:distill_canvas/infinite_canvas.dart';
 import 'package:distill_canvas/utilities.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../src/free_design/free_design.dart';
+import '../../src/free_design/canvas/drag/drag.dart';
+import '../../src/free_design/free_design.dart'
+    hide DragSession, DragMode, ResizeHandle, DropPreview, DropIntent;
 import 'mock_frames.dart';
 
 /// Spatial index bounds for the infinite canvas.
 const Rect kCanvasBounds = Rect.fromLTWH(-50000, -50000, 100000, 100000);
-
-/// Result of hit testing a container, containing both document and expanded IDs.
-///
-/// [patchId] is the document node ID used for patching/reparenting operations.
-/// [expandedId] is the expanded scene ID used for bounds lookup in the render tree.
-class ContainerHit {
-  final String patchId;
-  final String expandedId;
-
-  const ContainerHit(this.patchId, this.expandedId);
-
-  @override
-  String toString() => 'ContainerHit(patchId: $patchId, expandedId: $expandedId)';
-}
 
 /// Main state orchestrator for the canvas.
 ///
@@ -66,6 +54,11 @@ class CanvasState extends ChangeNotifier {
 
   /// Cached outlines for AI context (keyed by "frameId:focusNodeIds").
   final Map<String, String> _outlineCache = {};
+
+  /// Cached frame lookups (ID mappings) by frame ID.
+  ///
+  /// Used by DropPreviewBuilder for efficient expanded/doc ID conversions.
+  final Map<String, FrameLookups> _frameLookupsCache = {};
 
   /// Outline compiler for AI context generation.
   final OutlineCompiler _outlineCompiler = const OutlineCompiler();
@@ -395,6 +388,26 @@ class CanvasState extends ChangeNotifier {
     return renderDoc;
   }
 
+  /// Get pre-computed ID lookups for a frame.
+  ///
+  /// Builds and caches lookups from ExpandedScene and RenderDocument.
+  /// Returns null if scene or render doc not available.
+  ///
+  /// Used by [DropPreviewBuilder] for efficient expanded/doc ID conversions
+  /// during drag operations.
+  FrameLookups? getFrameLookups(String frameId) {
+    var lookups = _frameLookupsCache[frameId];
+    if (lookups != null) return lookups;
+
+    final scene = getExpandedScene(frameId);
+    final renderDoc = getRenderDoc(frameId);
+    if (scene == null || renderDoc == null) return null;
+
+    lookups = FrameLookups.build(scene: scene, renderDoc: renderDoc);
+    _frameLookupsCache[frameId] = lookups;
+    return lookups;
+  }
+
   /// Get the outline for AI context.
   ///
   /// Returns a compact tree-structured view of the frame optimized for
@@ -542,13 +555,14 @@ class CanvasState extends ChangeNotifier {
   /// draws at the correct location when multiple expanded nodes share
   /// the same document ID (e.g., in component instances).
   ///
-  /// [excludeNodeIds] - Optional set of node IDs to skip during hit testing.
+  /// [excludeExpandedIds] - Optional set of expanded IDs to skip during hit testing.
   /// Use this to exclude dragged nodes so hit testing can "see through" them
   /// to find the actual parent container during reordering operations.
+  /// Note: Uses expanded IDs (not doc IDs) for proper instance handling (INV-1).
   ContainerHit? hitTestContainer(
     String frameId,
     Offset worldPos, {
-    Set<String>? excludeNodeIds,
+    Set<String>? excludeExpandedIds,
   }) {
     final frame = document.frames[frameId];
     if (frame == null) return null;
@@ -585,7 +599,8 @@ class CanvasState extends ChangeNotifier {
       if (patchTargetId == null) continue; // Inside instance, skip
 
       // Skip excluded nodes (e.g., dragged nodes during reordering)
-      if (excludeNodeIds != null && excludeNodeIds.contains(patchTargetId)) {
+      // INV-1: Use expandedId for exclusion, not docId
+      if (excludeExpandedIds != null && excludeExpandedIds.contains(expandedId)) {
         continue;
       }
 
@@ -599,7 +614,7 @@ class CanvasState extends ChangeNotifier {
       // EARLY RETURN on first hit (topmost wins)
       // Return both IDs so indicator can use the correct expandedId for bounds
       if (bounds.contains(frameLocalPos)) {
-        return ContainerHit(patchTargetId, expandedId);
+        return ContainerHit(expandedId: expandedId, docId: patchTargetId);
       }
     }
 
@@ -611,7 +626,7 @@ class CanvasState extends ChangeNotifier {
           orElse: () => MapEntry(frame.rootNodeId, frame.rootNodeId),
         )
         .key;
-    return ContainerHit(frame.rootNodeId, rootExpandedId);
+    return ContainerHit(expandedId: rootExpandedId, docId: frame.rootNodeId);
   }
 
   /// Validate if a node can be reparented to target parent.
@@ -659,64 +674,6 @@ class CanvasState extends ChangeNotifier {
 
   /// Get the parent of a node, or null if it's a root node.
   String? getParent(String nodeId) => _store.getParent(nodeId);
-
-  /// Adjust drop target to handle sibling container case.
-  ///
-  /// When dragging nodes and the cursor lands on a sibling container,
-  /// we want to reorder within the parent, not drop into the sibling.
-  ///
-  /// Returns the adjusted drop target (parent if dropping on sibling,
-  /// or the original target otherwise).
-  ///
-  /// Takes a [ContainerHit] with both patchId and expandedId, and returns
-  /// an adjusted [ContainerHit]. When adjusting to the parent, it finds
-  /// the correct expandedId for the parent node.
-  ContainerHit? adjustDropTargetForSiblings(
-    ContainerHit? hit,
-    Set<String> draggedNodeIds,
-    String frameId,
-  ) {
-    if (hit == null) return null;
-    if (draggedNodeIds.isEmpty) return hit;
-
-    // Get the parent of the first dragged node (all should share parent for multi-select)
-    final firstDraggedId = draggedNodeIds.first;
-    final draggedParentId = getParent(firstDraggedId);
-
-    if (draggedParentId == null) return hit;
-
-    // Check if drop target is a sibling (shares same parent as dragged nodes)
-    final dropTargetParentId = getParent(hit.patchId);
-
-    if (dropTargetParentId == draggedParentId) {
-      // Drop target is a sibling - use the parent instead for reordering
-      // Find the expandedId for the parent by looking for which node has
-      // the hit's expandedId as a child
-      final renderDoc = getRenderDoc(frameId);
-      if (renderDoc != null) {
-        for (final entry in renderDoc.nodes.entries) {
-          if (entry.value.childIds.contains(hit.expandedId)) {
-            // This node is the parent of the hit node
-            return ContainerHit(draggedParentId, entry.key);
-          }
-        }
-      }
-
-      // Fallback: search patchTarget for first match (not ideal but better than nothing)
-      final scene = getExpandedScene(frameId);
-      if (scene != null) {
-        for (final entry in scene.patchTarget.entries) {
-          if (entry.value == draggedParentId) {
-            return ContainerHit(draggedParentId, entry.key);
-          }
-        }
-      }
-
-      return ContainerHit(draggedParentId, draggedParentId);
-    }
-
-    return hit;
-  }
 
   /// Convert frame-local coordinates to parent-local coordinates.
   ///
@@ -924,11 +881,85 @@ class CanvasState extends ChangeNotifier {
       }
     }
 
+    // INV-5: Capture frameId at drag start for node drags
+    String? lockedFrameId;
+    final nodeTargets = _selection.whereType<NodeTarget>().toList();
+    if (nodeTargets.isNotEmpty) {
+      lockedFrameId = nodeTargets.first.frameId;
+    }
+
+    // Capture origin stickiness data (expanded-first per INV-1)
+    // This prevents immediately targeting parent-of-parent when starting drag
+    String? originParentExpandedId;
+    Rect? originParentContentWorldRect;
+
+    if (nodeTargets.isNotEmpty && lockedFrameId != null) {
+      final lookups = getFrameLookups(lockedFrameId);
+
+      if (lookups != null) {
+        // Get the first dragged node's expanded ID
+        final primaryDraggedExpandedId = nodeTargets.first.expandedId;
+
+        // Derive origin parent from EXPANDED tree, not doc tree (INV-1 compliant)
+        // This ensures we use the correct instance when a parent appears multiple times
+        originParentExpandedId = lookups.expandedParent[primaryDraggedExpandedId];
+
+        // In v1 multi-select, verify all dragged nodes share the same expanded parent
+        // This is the expanded-tree equivalent of INV-7 (doc-parent constraint)
+        if (nodeTargets.length > 1) {
+          for (final target in nodeTargets.skip(1)) {
+            final parent = lookups.expandedParent[target.expandedId];
+            if (parent != originParentExpandedId) {
+              // Different expanded parents - can't use stickiness
+              // (This shouldn't happen with INV-7, but be defensive)
+              originParentExpandedId = null;
+              break;
+            }
+          }
+        }
+
+        // Compute content rect in WORLD coordinates
+        if (originParentExpandedId != null) {
+          // IMPORTANT: getNodeBoundsResolved returns FRAME-LOCAL bounds
+          // We must shift by frame position to get world coordinates
+          final frameLocalBounds =
+              getNodeBoundsResolved(lockedFrameId, originParentExpandedId);
+          if (frameLocalBounds != null) {
+            final framePos =
+                document.frames[lockedFrameId]?.canvas.position ?? Offset.zero;
+            final worldBounds = frameLocalBounds.shift(framePos);
+
+            // Get padding from doc node to compute content box
+            final originDocId = lookups.expandedToDoc[originParentExpandedId];
+            if (originDocId != null) {
+              final docNode = document.nodes[originDocId];
+              final autoLayout = docNode?.layout.autoLayout;
+              if (autoLayout != null) {
+                final padding = autoLayout.padding;
+                originParentContentWorldRect = Rect.fromLTRB(
+                  worldBounds.left + (padding.left.toDouble()),
+                  worldBounds.top + (padding.top.toDouble()),
+                  worldBounds.right - (padding.right.toDouble()),
+                  worldBounds.bottom - (padding.bottom.toDouble()),
+                );
+              } else {
+                // Not auto-layout - stickiness won't help (will climb anyway)
+                originParentExpandedId = null;
+              }
+            }
+          }
+        }
+      }
+    }
+
     _dragSession = DragSession.move(
       targets: _selection,
       startPositions: startPositions,
       startSizes: startSizes,
       originalParents: originalParents,
+      lockedFrameId: lockedFrameId,
+      originParentExpandedId: originParentExpandedId,
+      originParentContentWorldRect: originParentContentWorldRect,
     );
     notifyListeners();
   }
@@ -1003,10 +1034,43 @@ class CanvasState extends ChangeNotifier {
     final session = _dragSession;
     if (session == null) return;
 
-    // Generate patches - use coordinate-aware method for moves
-    final patches = session.mode == DragMode.move
-        ? _generateMovePatches(session)
-        : session.generatePatches();
+    final patches = <PatchOp>[];
+
+    if (session.mode == DragMode.move) {
+      final dropPreview = session.dropPreview;
+
+      // Handle node structural changes via DropCommitPlan
+      if (dropPreview != null && dropPreview.isValid) {
+        final plan = DropCommitPlan.fromPreview(
+          dropPreview,
+          session.originalParents,
+        );
+
+        if (plan.canCommit) {
+          patches.addAll(generateDropPatches(plan));
+        }
+      }
+
+      // Handle frame moves separately (frames don't have drop preview)
+      for (final target in session.targets) {
+        if (target is FrameTarget) {
+          final startPos = session.startPositions[target];
+          if (startPos != null) {
+            final newPos = startPos + session.effectiveOffset;
+            patches.add(
+              SetFrameProp(
+                frameId: target.frameId,
+                path: '/canvas/position',
+                value: {'x': newPos.dx, 'y': newPos.dy},
+              ),
+            );
+          }
+        }
+      }
+    } else {
+      // Resize, marquee, etc. - use existing logic
+      patches.addAll(session.generatePatches());
+    }
 
     if (patches.isNotEmpty) {
       _store.applyPatches(patches);
@@ -1014,117 +1078,6 @@ class CanvasState extends ChangeNotifier {
 
     _dragSession = null;
     notifyListeners();
-  }
-
-  /// Generate move patches with proper coordinate transformation.
-  ///
-  /// When reparenting, transforms frame-local position to new parent's
-  /// local coordinates so the node maintains its visual position.
-  List<PatchOp> _generateMovePatches(DragSession session) {
-    final patches = <PatchOp>[];
-
-    for (final target in session.targets) {
-      if (target is! NodeTarget) {
-        // Frame targets use simple patch generation
-        patches.addAll(_generateFrameMovePatches(session, target));
-        continue;
-      }
-
-      final patchTarget = target.patchTarget;
-      if (patchTarget == null) continue; // Skip nodes inside instances
-
-      final startPos = session.startPositions[target];
-      if (startPos == null) continue;
-
-      final frameId = target.frameId;
-      final originalParent = session.originalParents[patchTarget];
-      final newParent = session.dropTarget;
-      final insertionIndex = session.insertionIndex;
-
-      // Calculate new frame-local position
-      final newFrameLocalPos = startPos + session.effectiveOffset;
-
-      if (newParent != null && originalParent != null && newParent != originalParent) {
-        // Reparenting - transform to new parent's local coordinates
-        final newParentLocalPos = frameLocalToParentLocal(
-          newFrameLocalPos,
-          newParent,
-          frameId,
-        );
-
-        // Generate MoveNode patch
-        patches.add(
-          MoveNode(
-            id: patchTarget,
-            newParentId: newParent,
-            index: insertionIndex ?? -1,
-          ),
-        );
-
-        // Update position relative to new parent
-        patches.add(
-          SetProp(
-            id: patchTarget,
-            path: '/layout/position',
-            value: {
-              'mode': 'absolute',
-              'x': newParentLocalPos.dx,
-              'y': newParentLocalPos.dy,
-            },
-          ),
-        );
-      } else if (newParent != null && originalParent != null && originalParent == newParent && insertionIndex != null) {
-        // Reordering within same parent (auto-layout)
-        // insertionIndex is already in "filtered list" coordinates (excluding dragged nodes)
-        // MoveNode expects the index in the list AFTER removal, which is the same
-        final currentIndex = document.nodes[originalParent]?.childIds.indexOf(patchTarget) ?? -1;
-
-        if (currentIndex >= 0 && insertionIndex != currentIndex) {
-          // Also skip if moving to position right after current (no visible change)
-          // This happens when currentIndex=0 and insertionIndex=0, or
-          // when we'd be placing at the same effective position
-          patches.add(
-            MoveNode(
-              id: patchTarget,
-              newParentId: originalParent, // Now guaranteed non-null
-              index: insertionIndex,
-            ),
-          );
-        }
-      } else {
-        // Same parent, just update position (absolute positioned nodes)
-        patches.add(
-          SetProp(
-            id: patchTarget,
-            path: '/layout/position',
-            value: {
-              'mode': 'absolute',
-              'x': newFrameLocalPos.dx,
-              'y': newFrameLocalPos.dy,
-            },
-          ),
-        );
-      }
-    }
-
-    return patches;
-  }
-
-  /// Generate move patches for frame targets.
-  List<PatchOp> _generateFrameMovePatches(DragSession session, DragTarget target) {
-    if (target is! FrameTarget) return [];
-
-    final startPos = session.startPositions[target];
-    if (startPos == null) return [];
-
-    final newPos = startPos + session.effectiveOffset;
-    return [
-      SetFrameProp(
-        frameId: target.frameId,
-        path: '/canvas/position',
-        value: {'x': newPos.dx, 'y': newPos.dy},
-      ),
-    ];
   }
 
   /// Cancel the current drag without committing.
@@ -1297,6 +1250,7 @@ class CanvasState extends ChangeNotifier {
       for (final frameId in changes.frameDirty) {
         _expandedScenes.remove(frameId);
         _renderCache.remove(frameId);
+        _frameLookupsCache.remove(frameId);
         // Note: We don't clear node bounds here because frame position/size
         // changes don't affect node bounds (which are frame-local).
         // Node bounds only need to be cleared when the node structure changes
@@ -1322,6 +1276,7 @@ class CanvasState extends ChangeNotifier {
       for (final frameId in affectedFrames) {
         _expandedScenes.remove(frameId);
         _renderCache.remove(frameId);
+        _frameLookupsCache.remove(frameId);
         _clearNodeBounds(frameId);
       }
 
@@ -1344,6 +1299,7 @@ class CanvasState extends ChangeNotifier {
       // Render nodes hold old computed bounds/props that must be invalidated
       for (final frameId in affectedFrames) {
         _renderCache.remove(frameId);
+        _frameLookupsCache.remove(frameId);
         _clearNodeBounds(frameId);
       }
     }
