@@ -25,6 +25,7 @@ class CanvasGestureConfig {
     this.enableSpacebarPan = true,
     this.enableMiddleMousePan = true,
     this.enableScrollPan = true,
+    this.naturalScrolling = true,
     this.dragThreshold = 5.0,
     this.touchDragThreshold,
     this.hoverThrottleMs = 16,
@@ -57,6 +58,16 @@ class CanvasGestureConfig {
   ///
   /// Note: Cmd/Ctrl+scroll for zoom is controlled separately by [enableZoom].
   final bool enableScrollPan;
+
+  /// Use natural (reversed) scroll direction for panning.
+  ///
+  /// When true (default), scrolling follows "natural" direction where content
+  /// moves in the same direction as your fingers (like touching paper).
+  /// This matches macOS default trackpad behavior.
+  ///
+  /// When false, uses traditional scroll direction where scrolling down
+  /// moves content up (like a scroll bar).
+  final bool naturalScrolling;
 
   /// Minimum distance in pixels before a pointer down becomes a drag (mouse).
   ///
@@ -105,6 +116,7 @@ class CanvasGestureConfig {
     enableSpacebarPan: false,
     enableMiddleMousePan: false,
     enableScrollPan: false,
+    naturalScrolling: true,
   );
 
   /// Preset: zoom only (no manual panning).
@@ -127,6 +139,7 @@ class CanvasGestureConfig {
     bool? enableSpacebarPan,
     bool? enableMiddleMousePan,
     bool? enableScrollPan,
+    bool? naturalScrolling,
     double? dragThreshold,
     double? touchDragThreshold,
     int? hoverThrottleMs,
@@ -137,6 +150,7 @@ class CanvasGestureConfig {
       enableSpacebarPan: enableSpacebarPan ?? this.enableSpacebarPan,
       enableMiddleMousePan: enableMiddleMousePan ?? this.enableMiddleMousePan,
       enableScrollPan: enableScrollPan ?? this.enableScrollPan,
+      naturalScrolling: naturalScrolling ?? this.naturalScrolling,
       dragThreshold: dragThreshold ?? this.dragThreshold,
       touchDragThreshold: touchDragThreshold ?? this.touchDragThreshold,
       hoverThrottleMs: hoverThrottleMs ?? this.hoverThrottleMs,
@@ -153,6 +167,7 @@ class CanvasGestureConfig {
           enableSpacebarPan == other.enableSpacebarPan &&
           enableMiddleMousePan == other.enableMiddleMousePan &&
           enableScrollPan == other.enableScrollPan &&
+          naturalScrolling == other.naturalScrolling &&
           dragThreshold == other.dragThreshold &&
           touchDragThreshold == other.touchDragThreshold &&
           hoverThrottleMs == other.hoverThrottleMs;
@@ -164,6 +179,7 @@ class CanvasGestureConfig {
     enableSpacebarPan,
     enableMiddleMousePan,
     enableScrollPan,
+    naturalScrolling,
     dragThreshold,
     touchDragThreshold,
     hoverThrottleMs,

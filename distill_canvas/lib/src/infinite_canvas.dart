@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'canvas_gesture_config.dart';
 import 'canvas_layers.dart';
+import 'canvas_momentum_config.dart';
 import 'canvas_physics_config.dart';
 import 'infinite_canvas_controller.dart';
 import 'initial_viewport.dart';
@@ -55,6 +56,7 @@ class InfiniteCanvas extends StatefulWidget {
     required this.layers,
     this.gestureConfig = const CanvasGestureConfig(),
     this.physicsConfig = const CanvasPhysicsConfig(),
+    this.momentumConfig = const CanvasMomentumConfig(),
     this.initialViewport = const InitialViewport.centerOrigin(),
     this.backgroundColor,
     this.onControllerReady,
@@ -90,6 +92,19 @@ class InfiniteCanvas extends StatefulWidget {
 
   /// Configuration for viewport physics (zoom limits, bounds).
   final CanvasPhysicsConfig physicsConfig;
+
+  /// Configuration for pan momentum and sensitivity.
+  ///
+  /// Controls trackpad pan sensitivity and momentum/inertia behavior.
+  /// Use presets like [CanvasMomentumConfig.figmaLike] for common feels.
+  ///
+  /// ```dart
+  /// InfiniteCanvas(
+  ///   momentumConfig: CanvasMomentumConfig.figmaLike,
+  ///   // ...
+  /// )
+  /// ```
+  final CanvasMomentumConfig momentumConfig;
 
   /// How to position the viewport on first layout.
   ///
@@ -233,6 +248,15 @@ class _InfiniteCanvasState extends State<InfiniteCanvas>
   double _trackpadLastScale = 1.0;
   bool _isTrackpadZooming = false;
 
+  // Filtered velocity tracking for momentum (more reliable than VelocityTracker
+  // for trackpad gestures, which often end with deceleration frames)
+  Offset _trackpadAccumulatedPan = Offset.zero;
+  Duration _trackpadLastEventTime = Duration.zero;
+  Offset _trackpadFilteredVelocity = Offset.zero;
+  Offset _trackpadLastNonZeroVelocity = Offset.zero;
+  static const double _kVelocityAlpha = 0.25; // Low-pass filter smoothing
+  static const double _kVelocityEpsilon = 0.001;
+
   // Track middle mouse to prevent tap on middle-click
   bool _wasMiddleMouseDown = false;
 
@@ -280,6 +304,11 @@ class _InfiniteCanvasState extends State<InfiniteCanvas>
     if (oldWidget.physicsConfig != widget.physicsConfig) {
       _controller.updatePhysics(widget.physicsConfig);
     }
+
+    // Handle momentum config change
+    if (oldWidget.momentumConfig != widget.momentumConfig) {
+      _controller.updateMomentumConfig(widget.momentumConfig);
+    }
   }
 
   @override
@@ -319,6 +348,7 @@ class _InfiniteCanvasState extends State<InfiniteCanvas>
             viewportSize: viewportSize,
             initialState: initialState,
           );
+          _controller.updateMomentumConfig(widget.momentumConfig);
 
           // Notify controller ready and viewport size
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -659,12 +689,56 @@ class _InfiniteCanvasState extends State<InfiniteCanvas>
   void _handleTrackpadPanZoomStart(PointerPanZoomStartEvent event) {
     _trackpadLastScale = 1.0;
     _controller.cancelAnimations();
+
+    // Initialize filtered velocity tracking for momentum
+    if (widget.momentumConfig.enableMomentum) {
+      _trackpadAccumulatedPan = Offset.zero;
+      _trackpadLastEventTime = event.timeStamp;
+      _trackpadFilteredVelocity = Offset.zero;
+      _trackpadLastNonZeroVelocity = Offset.zero;
+    }
   }
 
   void _handleTrackpadPanZoomUpdate(PointerPanZoomUpdateEvent event) {
-    // Pan
+    // Compute scaled delta (this is what the user "feels")
+    final sign = widget.gestureConfig.naturalScrolling ? 1.0 : -1.0;
+    final sensitivity = widget.momentumConfig.panSensitivity;
+    final scaledDelta = event.localPanDelta * sign * sensitivity;
+
+    // Track filtered velocity for momentum using the SCALED delta
+    // so momentum matches what the user felt during the gesture
+    if (widget.momentumConfig.enableMomentum) {
+      final rawDt =
+          (event.timeStamp - _trackpadLastEventTime).inMicroseconds / 1e6;
+      _trackpadLastEventTime = event.timeStamp;
+
+      _trackpadAccumulatedPan += scaledDelta;
+
+      // Clamp dt to prevent velocity spikes from tiny/identical timestamps
+      if (rawDt > 0 && scaledDelta.distance > _kVelocityEpsilon) {
+        final safeDt = rawDt.clamp(1 / 240.0, 1 / 30.0);
+        final instantVelocity = scaledDelta / safeDt;
+
+        // Apply low-pass filter for smooth velocity
+        _trackpadFilteredVelocity = Offset(
+          _trackpadFilteredVelocity.dx +
+              (instantVelocity.dx - _trackpadFilteredVelocity.dx) *
+                  _kVelocityAlpha,
+          _trackpadFilteredVelocity.dy +
+              (instantVelocity.dy - _trackpadFilteredVelocity.dy) *
+                  _kVelocityAlpha,
+        );
+
+        // Remember last non-zero velocity for fallback direction
+        if (_trackpadFilteredVelocity.distance > _kVelocityEpsilon) {
+          _trackpadLastNonZeroVelocity = _trackpadFilteredVelocity;
+        }
+      }
+    }
+
+    // Pan with sensitivity multiplier
     if (event.localPanDelta != Offset.zero && widget.gestureConfig.enablePan) {
-      _controller.panBy(-event.localPanDelta);
+      _controller.panBy(scaledDelta);
       // Note: We don't set isPanning for trackpad pan since it's
       // a combined gesture and short-lived
     }
@@ -691,6 +765,30 @@ class _InfiniteCanvasState extends State<InfiniteCanvas>
       _isTrackpadZooming = false;
       _controller.setIsZooming(false);
     }
+
+    // Apply momentum if enabled and we panned
+    if (widget.momentumConfig.enableMomentum && widget.gestureConfig.enablePan) {
+      final hadPan = _trackpadAccumulatedPan.distance > 0.5;
+
+      // Velocity is already scaled (sign * sensitivity baked in during update)
+      var velocity = _trackpadFilteredVelocity;
+
+      // If filtered velocity is tiny but we did pan, use last non-zero direction
+      if (velocity.distance < _kVelocityEpsilon && hadPan) {
+        velocity = _trackpadLastNonZeroVelocity;
+      }
+
+      _controller.startMomentumWithFloor(
+        velocity,
+        hadPan: hadPan,
+        fallbackDirection: _trackpadLastNonZeroVelocity,
+      );
+    }
+
+    // Reset tracking state
+    _trackpadAccumulatedPan = Offset.zero;
+    _trackpadFilteredVelocity = Offset.zero;
+    _trackpadLastNonZeroVelocity = Offset.zero;
   }
 
   //───────────────────────────────────────────────────────────────────────────
@@ -755,7 +853,14 @@ class _InfiniteCanvasState extends State<InfiniteCanvas>
 
     // Regular scroll = Pan (only if scroll-pan is enabled)
     if (widget.gestureConfig.enableScrollPan) {
-      final panDelta = Offset(-event.scrollDelta.dx, -event.scrollDelta.dy);
+      // Natural scrolling: content moves with finger direction (like paper)
+      // Traditional scrolling: content moves opposite to scroll (like scrollbar)
+      final sign = widget.gestureConfig.naturalScrolling ? 1.0 : -1.0;
+      final sensitivity = widget.momentumConfig.scrollSensitivity;
+      final panDelta = Offset(
+        event.scrollDelta.dx * sign * sensitivity,
+        event.scrollDelta.dy * sign * sensitivity,
+      );
       _controller.panBy(panDelta);
       _notifyViewportChanged();
     }

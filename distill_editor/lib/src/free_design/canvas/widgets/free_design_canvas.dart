@@ -96,6 +96,7 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
                 minZoom: 0.1,
                 maxZoom: 4.0,
               ),
+              momentumConfig: CanvasMomentumConfig.figmaLike,
               layers: CanvasLayers(
                 background: _buildBackground,
                 content: _buildContent,
@@ -154,23 +155,24 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
 
     return Stack(
       clipBehavior: Clip.none,
-      children: visibleFrames.map((frame) {
-        // Use preview position/size during drag if this frame is being dragged
-        final previewBounds = _getFramePreviewBounds(frame);
+      children:
+          visibleFrames.map((frame) {
+            // Use preview position/size during drag if this frame is being dragged
+            final previewBounds = _getFramePreviewBounds(frame);
 
-        return CanvasItem(
-          position: previewBounds.topLeft,
-          child: SizedBox(
-            width: previewBounds.width,
-            height: previewBounds.height,
-            child: FrameRenderer(
-              frameId: frame.id,
-              state: widget.state,
-              showPlaceholder: showPlaceholder,
-            ),
-          ),
-        );
-      }).toList(),
+            return CanvasItem(
+              position: previewBounds.topLeft,
+              child: SizedBox(
+                width: previewBounds.width,
+                height: previewBounds.height,
+                child: FrameRenderer(
+                  frameId: frame.id,
+                  state: widget.state,
+                  showPlaceholder: showPlaceholder,
+                ),
+              ),
+            );
+          }).toList(),
     );
   }
 
@@ -304,8 +306,8 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
       final focusContext = primaryFocus.context;
       if (focusContext != null) {
         // If the focused widget is an EditableText or its descendant, don't intercept
-        final editableText = focusContext
-            .findAncestorWidgetOfExactType<EditableText>();
+        final editableText =
+            focusContext.findAncestorWidgetOfExactType<EditableText>();
         if (editableText != null) {
           return KeyEventResult.ignored;
         }

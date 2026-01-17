@@ -60,6 +60,7 @@ library;
 
 export 'src/canvas_gesture_config.dart';
 export 'src/canvas_layers.dart';
+export 'src/canvas_momentum_config.dart';
 export 'src/canvas_physics_config.dart';
 export 'src/infinite_canvas.dart';
 export 'src/infinite_canvas_controller.dart';
