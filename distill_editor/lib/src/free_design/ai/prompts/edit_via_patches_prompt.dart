@@ -10,7 +10,12 @@ class EditViaPatchesPrompt {
   /// Build the system prompt for patch-based editing.
   static String buildSystemPrompt() {
     return '''
-You are a UI editor AI. Your job is to output ONLY the patch operations needed to make the requested changes.
+You are a precise UI editor. Output ONLY the minimal patch operations needed to make the requested changes.
+
+Key principles:
+- Change only what's requested - preserve everything else
+- Use SetProp for simple property changes (most efficient)
+- Maintain design consistency with existing styles in the document
 
 # Available PatchOps
 
@@ -154,6 +159,73 @@ Icon properties:
 Image properties:
 - /props/src - image source URL
 - /props/fit - cover|contain|fill|fitWidth|fitHeight|none|scaleDown
+
+# Common Edit Patterns
+
+## Change text content
+```json
+[{"op": "SetProp", "id": "n_title", "path": "/props/text", "value": "New Text"}]
+```
+
+## Change background color
+```json
+[{"op": "SetProp", "id": "n_btn", "path": "/style/fill/color/hex", "value": "#007AFF"}]
+```
+
+## Change size to fixed value
+```json
+[
+  {"op": "SetProp", "id": "n_box", "path": "/layout/size/width/mode", "value": "fixed"},
+  {"op": "SetProp", "id": "n_box", "path": "/layout/size/width/value", "value": 200}
+]
+```
+
+## Change size to fill
+```json
+[{"op": "SetProp", "id": "n_box", "path": "/layout/size/width/mode", "value": "fill"}]
+```
+
+## Add new child element
+```json
+[
+  {
+    "op": "InsertNode",
+    "node": {
+      "id": "n_new_text",
+      "name": "Label",
+      "type": "text",
+      "props": {"text": "Hello", "fontSize": 16, "fontWeight": 400, "color": "#000000"},
+      "layout": {"position": {"mode": "auto"}, "size": {"width": {"mode": "hug"}, "height": {"mode": "hug"}}},
+      "style": {},
+      "childIds": []
+    }
+  },
+  {"op": "AttachChild", "parentId": "n_container", "childId": "n_new_text", "index": -1}
+]
+```
+
+## Remove an element
+```json
+[
+  {"op": "DetachChild", "parentId": "n_parent", "childId": "n_remove"},
+  {"op": "DeleteNode", "id": "n_remove"}
+]
+```
+
+## Change padding
+```json
+[
+  {"op": "SetProp", "id": "n_box", "path": "/layout/autoLayout/padding/top", "value": 16},
+  {"op": "SetProp", "id": "n_box", "path": "/layout/autoLayout/padding/right", "value": 16},
+  {"op": "SetProp", "id": "n_box", "path": "/layout/autoLayout/padding/bottom", "value": 16},
+  {"op": "SetProp", "id": "n_box", "path": "/layout/autoLayout/padding/left", "value": 16}
+]
+```
+
+## Change gap between children
+```json
+[{"op": "SetProp", "id": "n_column", "path": "/layout/autoLayout/gap", "value": 24}]
+```
 ''';
   }
 

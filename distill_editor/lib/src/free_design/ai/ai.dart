@@ -1,6 +1,7 @@
 /// AI service for Free Design.
 ///
 /// Provides AI-powered frame generation from natural language descriptions.
+/// Uses OpenRouter to access all AI models through a unified API.
 library;
 
 export 'ai_command.dart';
@@ -10,8 +11,6 @@ export 'llm_client.dart';
 export 'patch_ops_parser.dart';
 
 // Clients
-export 'clients/anthropic_client.dart';
-export 'clients/gemini_client.dart';
 export 'clients/mock_client.dart';
 export 'clients/openai_client.dart';
 

@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io' show Platform;
 import 'dart:ui';
 
 import '../compiler/outline_compiler.dart';
@@ -9,8 +10,6 @@ import '../models/node.dart';
 import '../patch/patch_op.dart';
 import '../patch/patch_validator.dart';
 import '../store/editor_document_store.dart';
-import 'clients/anthropic_client.dart';
-import 'clients/gemini_client.dart';
 import 'clients/mock_client.dart';
 import 'clients/openai_client.dart';
 import 'frame_generator.dart';
@@ -27,6 +26,9 @@ void _log(String message) {
   print('[FreeDesignAI] $message');
 }
 
+/// OpenRouter API endpoint.
+const _openRouterEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
+
 /// AI service for Free Design.
 ///
 /// Provides AI-powered features:
@@ -34,6 +36,9 @@ void _log(String message) {
 /// - Token-efficient editing via PatchOps
 /// - Token-efficient generation via DSL
 /// - (Future) Flutter code generation
+///
+/// Uses OpenRouter to access all AI models through a unified API.
+/// Set OPENROUTER_API_KEY environment variable to enable.
 class FreeDesignAiService {
   final FrameGenerator _frameGenerator;
   final LlmClient _llmClient;
@@ -51,48 +56,23 @@ class FreeDesignAiService {
         _dslParser = DslParser();
 
   /// Create an AI service with the specified model and API key.
+  ///
+  /// Uses OpenRouter API endpoint.
   factory FreeDesignAiService({
     required LlmModel model,
     required String apiKey,
   }) {
-    final client = _createClient(model: model, apiKey: apiKey);
+    final client = OpenAiClient(
+      apiKey: apiKey,
+      model: model.modelId,
+      endpoint: _openRouterEndpoint,
+    );
     return FreeDesignAiService._(client);
   }
 
   /// Create an AI service with a mock client for testing.
   factory FreeDesignAiService.mock([MockLlmClient? client]) {
     return FreeDesignAiService._(client ?? MockLlmClient());
-  }
-
-  /// Create the appropriate client for the model.
-  static LlmClient _createClient({
-    required LlmModel model,
-    required String apiKey,
-  }) {
-    return switch (model.provider) {
-      LlmProvider.anthropic => AnthropicClient(
-          apiKey: apiKey,
-          model: model.modelId,
-        ),
-      LlmProvider.openai => OpenAiClient(
-          apiKey: apiKey,
-          model: model.modelId,
-        ),
-      LlmProvider.gemini => GeminiClient(
-          apiKey: apiKey,
-          model: model.modelId,
-        ),
-      LlmProvider.groq => OpenAiClient(
-          apiKey: apiKey,
-          model: model.modelId,
-          endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-        ),
-      LlmProvider.cerebras => OpenAiClient(
-          apiKey: apiKey,
-          model: model.modelId,
-          endpoint: 'https://api.cerebras.ai/v1/chat/completions',
-        ),
-    };
   }
 
   /// Generate a frame from a natural language description.
@@ -178,10 +158,13 @@ class FreeDesignAiService {
         _log('generateViaDsl: Sending request (attempt ${attempt + 1})');
 
         // Call LLM
+        // Initial generation: 0.5 balances creativity with consistency
+        // Repair attempts: 0.2 for maximum determinism to fix errors reliably
+        final temperature = attempt == 0 ? 0.5 : 0.2;
         final response = await _llmClient.complete(
           system: systemPrompt,
           user: userPrompt,
-          temperature: 0.7, // Higher for creative generation
+          temperature: temperature,
           maxTokens: 4096,
         );
 
@@ -348,10 +331,13 @@ Output ONLY the corrected DSL:
         _log('editViaPatches: Sending request (attempt ${attempt + 1})');
 
         // Call LLM
+        // Initial edit: 0.3 for precise changes
+        // Repair attempts: 0.1 for maximum determinism to fix validation errors
+        final temperature = attempt == 0 ? 0.3 : 0.1;
         final response = await _llmClient.complete(
           system: systemPrompt,
           user: userPrompt,
-          temperature: 0.3,
+          temperature: temperature,
           maxTokens: 8192, // Needs room for InsertNode operations with full JSON
         );
 
@@ -497,99 +483,82 @@ Output ONLY the corrected DSL:
   }
 }
 
+/// Get an environment variable, checking both compile-time (dart-define) and
+/// runtime (Platform.environment) sources.
+///
+/// Compile-time values take precedence over runtime values.
+String _getEnv(String name) {
+  // First check compile-time environment (works on all platforms including web)
+  const compileTime = {
+    'OPENROUTER_API_KEY': String.fromEnvironment('OPENROUTER_API_KEY'),
+    'AI_MODEL': String.fromEnvironment('AI_MODEL'),
+  };
+
+  final compileValue = compileTime[name] ?? '';
+  if (compileValue.isNotEmpty) {
+    return compileValue;
+  }
+
+  // Fall back to runtime environment (native platforms only)
+  // Platform.environment is not available on web, so we catch the error
+  try {
+    return Platform.environment[name] ?? '';
+  } catch (_) {
+    // Platform not available (web), return empty
+    return '';
+  }
+}
+
 /// Factory for creating AI service from environment variables.
 ///
-/// Reads API keys and model selection from dart-define environment variables.
-/// Returns null if no API key is configured.
+/// Uses OpenRouter to access all AI models through a unified API.
+/// Checks both compile-time (--dart-define) and runtime (exported shell variables).
+///
+/// Returns null if OPENROUTER_API_KEY is not configured.
 ///
 /// Environment variables:
-/// - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `CEREBRAS_API_KEY`
-/// - `AI_MODEL` - Optional model ID override (e.g., "gemini-2.0-flash", "claude-haiku-4-5-20251001")
+/// - `OPENROUTER_API_KEY` - Required. Your OpenRouter API key.
+/// - `AI_MODEL` - Optional. Model ID in OpenRouter format (e.g., "anthropic/claude-sonnet-4").
+///   Defaults to Claude Sonnet 4.
 ///
-/// Priority order (when multiple keys present): Anthropic > OpenAI > Gemini > Groq > Cerebras
+/// Example models:
+/// - `anthropic/claude-sonnet-4` (default)
+/// - `anthropic/claude-haiku-4`
+/// - `openai/gpt-4o`
+/// - `google/gemini-2.5-pro-preview`
+/// - `meta-llama/llama-4-maverick`
+///
+/// See https://openrouter.ai/models for all available models.
 FreeDesignAiService? createAiServiceFromEnv() {
-  const anthropicKey = String.fromEnvironment('ANTHROPIC_API_KEY');
-  const openaiKey = String.fromEnvironment('OPENAI_API_KEY');
-  const geminiKey = String.fromEnvironment('GEMINI_API_KEY');
-  const groqKey = String.fromEnvironment('GROQ_API_KEY');
-  const cerebrasKey = String.fromEnvironment('CEREBRAS_API_KEY');
-  const modelOverride = String.fromEnvironment('AI_MODEL');
-
-  LlmModel? model;
-  String? apiKey;
-
-  // Priority: Anthropic > OpenAI > Gemini > Groq > Cerebras
-  if (anthropicKey.isNotEmpty) {
-    apiKey = anthropicKey;
-    model = _resolveModel(modelOverride, LlmProvider.anthropic, LlmModel.claudeSonnet);
-  } else if (openaiKey.isNotEmpty) {
-    apiKey = openaiKey;
-    model = _resolveModel(modelOverride, LlmProvider.openai, LlmModel.gpt4o);
-  } else if (geminiKey.isNotEmpty) {
-    apiKey = geminiKey;
-    model = _resolveModel(modelOverride, LlmProvider.gemini, LlmModel.geminiPro);
-  } else if (groqKey.isNotEmpty) {
-    apiKey = groqKey;
-    model = _resolveModel(modelOverride, LlmProvider.groq, LlmModel.groqLlama70b);
-  } else if (cerebrasKey.isNotEmpty) {
-    apiKey = cerebrasKey;
-    model = _resolveModel(modelOverride, LlmProvider.cerebras, LlmModel.cerebrasLlama70b);
-  }
-
-  if (model == null || apiKey == null) {
+  final apiKey = _getEnv('OPENROUTER_API_KEY');
+  if (apiKey.isEmpty) {
     return null;
   }
+
+  final modelId = _getEnv('AI_MODEL');
+  final model = modelId.isNotEmpty
+      ? LlmModel.fromId(modelId)
+      : LlmModel.defaultModel;
 
   _log('Creating AI service with model: ${model.displayName} (${model.modelId})');
   return FreeDesignAiService(model: model, apiKey: apiKey);
 }
 
-/// Resolve model from override or use default.
-LlmModel _resolveModel(String override, LlmProvider provider, LlmModel defaultModel) {
-  if (override.isEmpty) return defaultModel;
-
-  // Check if override matches a preset
-  final preset = LlmModel.all.where((m) => m.modelId == override).firstOrNull;
-  if (preset != null) {
-    _log('Using preset model: ${preset.displayName}');
-    return preset;
-  }
-
-  // Use override as custom model ID for this provider
-  _log('Using custom model ID: $override');
-  return LlmModel(provider, override, 'Custom ($override)');
-}
-
 /// Get info about the configured AI provider and model.
+///
+/// Returns null if OPENROUTER_API_KEY is not set.
 AiConfigInfo? getConfiguredAiInfo() {
-  const anthropicKey = String.fromEnvironment('ANTHROPIC_API_KEY');
-  const openaiKey = String.fromEnvironment('OPENAI_API_KEY');
-  const geminiKey = String.fromEnvironment('GEMINI_API_KEY');
-  const groqKey = String.fromEnvironment('GROQ_API_KEY');
-  const cerebrasKey = String.fromEnvironment('CEREBRAS_API_KEY');
-  const modelOverride = String.fromEnvironment('AI_MODEL');
+  final apiKey = _getEnv('OPENROUTER_API_KEY');
+  if (apiKey.isEmpty) {
+    return null;
+  }
 
-  if (anthropicKey.isNotEmpty) {
-    final model = _resolveModel(modelOverride, LlmProvider.anthropic, LlmModel.claudeSonnet);
-    return AiConfigInfo('Anthropic', model.displayName, model.modelId);
-  }
-  if (openaiKey.isNotEmpty) {
-    final model = _resolveModel(modelOverride, LlmProvider.openai, LlmModel.gpt4o);
-    return AiConfigInfo('OpenAI', model.displayName, model.modelId);
-  }
-  if (geminiKey.isNotEmpty) {
-    final model = _resolveModel(modelOverride, LlmProvider.gemini, LlmModel.geminiPro);
-    return AiConfigInfo('Google Gemini', model.displayName, model.modelId);
-  }
-  if (groqKey.isNotEmpty) {
-    final model = _resolveModel(modelOverride, LlmProvider.groq, LlmModel.groqLlama70b);
-    return AiConfigInfo('Groq', model.displayName, model.modelId);
-  }
-  if (cerebrasKey.isNotEmpty) {
-    final model = _resolveModel(modelOverride, LlmProvider.cerebras, LlmModel.cerebrasLlama70b);
-    return AiConfigInfo('Cerebras', model.displayName, model.modelId);
-  }
-  return null;
+  final modelId = _getEnv('AI_MODEL');
+  final model = modelId.isNotEmpty
+      ? LlmModel.fromId(modelId)
+      : LlmModel.defaultModel;
+
+  return AiConfigInfo('OpenRouter', model.displayName, model.modelId);
 }
 
 /// Get a description of which AI provider is configured.

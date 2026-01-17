@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../store/editor_document_store.dart';
 import 'ai_service.dart';
+import 'llm_client.dart';
 
 void _log(String message) {
   developer.log(message, name: 'AiCommand');
@@ -70,8 +71,17 @@ Future<void> executeAiGenerateFrame(
         duration: const Duration(seconds: 3),
       ),
     );
-  } catch (e) {
+  } catch (e, stackTrace) {
     _log('generateViaDsl: ERROR - $e');
+    _log('Stack trace:\n$stackTrace');
+
+    // Log additional details for LlmException
+    if (e is LlmException) {
+      _log('Status code: ${e.statusCode}');
+      if (e.responseBody != null) {
+        _log('Response body: ${e.responseBody}');
+      }
+    }
 
     // Show error message
     scaffoldMessenger.hideCurrentSnackBar();

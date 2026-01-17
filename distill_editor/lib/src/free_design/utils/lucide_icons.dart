@@ -34,9 +34,11 @@ const Map<String, IconData> lucideIconMap = {
   'align-center-vertical': LucideIcons.alignCenterVertical,
   'align-end-horizontal': LucideIcons.alignEndHorizontal,
   'align-end-vertical': LucideIcons.alignEndVertical,
-  'align-horizontal-distribute-center': LucideIcons.alignHorizontalDistributeCenter,
+  'align-horizontal-distribute-center':
+      LucideIcons.alignHorizontalDistributeCenter,
   'align-horizontal-distribute-end': LucideIcons.alignHorizontalDistributeEnd,
-  'align-horizontal-distribute-start': LucideIcons.alignHorizontalDistributeStart,
+  'align-horizontal-distribute-start':
+      LucideIcons.alignHorizontalDistributeStart,
   'align-horizontal-justify-center': LucideIcons.alignHorizontalJustifyCenter,
   'align-horizontal-justify-end': LucideIcons.alignHorizontalJustifyEnd,
   'align-horizontal-justify-start': LucideIcons.alignHorizontalJustifyStart,

@@ -143,13 +143,33 @@ class RepairPrompt {
 - Error: Node "n_xyz" does not exist
 - Fix: Add InsertNode for "n_xyz" before referencing it
 
+Example fix:
+```json
+[
+  {"op": "InsertNode", "node": {"id": "n_xyz", "name": "New Node", "type": "text", "props": {"text": "Hello", "fontSize": 16, "fontWeight": 400, "color": "#000000"}, "layout": {"position": {"mode": "auto"}, "size": {"width": {"mode": "hug"}, "height": {"mode": "hug"}}}, "style": {}, "childIds": []}},
+  {"op": "AttachChild", "parentId": "n_parent", "childId": "n_xyz", "index": -1}
+]
+```
+
 ## Parent-Child Relationships
 - Error: Orphaned node "n_abc"
 - Fix: Add AttachChild to connect it to a parent
 
+Example fix:
+```json
+[{"op": "AttachChild", "parentId": "n_root", "childId": "n_abc", "index": -1}]
+```
+
 ## Property Paths
 - Error: Invalid property path "/props/text/content"
 - Fix: Use "/props/text" for text content (not nested)
+
+Common correct paths:
+- Text content: /props/text (NOT /props/text/content or /props/text/value)
+- Font size: /props/fontSize
+- Background: /style/fill/color/hex
+- Width mode: /layout/size/width/mode
+- Width value: /layout/size/width/value
 
 ## Order of Operations
 Correct order for creating and attaching a node:
@@ -159,6 +179,22 @@ Correct order for creating and attaching a node:
 Correct order for removing a node:
 1. DetachChild (remove from parent)
 2. DeleteNode (delete the node)
+
+WRONG order (will fail):
+```json
+[
+  {"op": "AttachChild", "parentId": "n_root", "childId": "n_new"},
+  {"op": "InsertNode", "node": {...}}
+]
+```
+
+CORRECT order:
+```json
+[
+  {"op": "InsertNode", "node": {"id": "n_new", ...}},
+  {"op": "AttachChild", "parentId": "n_root", "childId": "n_new", "index": -1}
+]
+```
 
 ## Type-Specific Properties
 - container: /props/clipContent, /props/scrollDirection

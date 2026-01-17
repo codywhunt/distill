@@ -218,8 +218,8 @@ final _globalCommands = [
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'AI not configured. Run with --dart-define=ANTHROPIC_API_KEY=... '
-              '(or OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY)',
+              'AI not configured. Set OPENROUTER_API_KEY environment variable '
+              'or run with --dart-define=OPENROUTER_API_KEY=...',
             ),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 5),

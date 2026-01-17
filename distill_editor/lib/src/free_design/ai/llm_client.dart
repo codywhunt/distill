@@ -1,91 +1,64 @@
 /// LLM client interface and model definitions for AI services.
 ///
-/// Supports multiple providers:
-/// - Anthropic (Claude)
-/// - OpenAI (GPT)
-/// - Google (Gemini)
-/// - Groq (Llama via OpenAI-compatible API)
-/// - Cerebras (Llama via OpenAI-compatible API)
+/// Uses OpenRouter to access all models through a unified API.
+/// Set OPENROUTER_API_KEY and optionally AI_MODEL environment variables.
 library;
 
-/// Supported LLM providers.
-enum LlmProvider {
-  anthropic,
-  openai,
-  gemini,
-  groq,
-  cerebras,
-}
-
-/// Model configuration.
+/// Model configuration for OpenRouter.
+///
+/// Models use OpenRouter's naming convention: `provider/model-name`
+/// See https://openrouter.ai/models for available models.
 class LlmModel {
-  final LlmProvider provider;
   final String modelId;
   final String displayName;
 
-  const LlmModel(this.provider, this.modelId, this.displayName);
+  const LlmModel(this.modelId, this.displayName);
 
-  // Anthropic
+  /// Create a model from an OpenRouter model ID.
+  factory LlmModel.fromId(String modelId) {
+    // Check if it matches a preset
+    final preset = all.where((m) => m.modelId == modelId).firstOrNull;
+    if (preset != null) return preset;
+
+    // Create custom model
+    return LlmModel(modelId, modelId);
+  }
+
+  // Anthropic (via OpenRouter)
   static const claudeSonnet = LlmModel(
-    LlmProvider.anthropic,
-    'claude-sonnet-4-5-20250929',
-    'Claude Sonnet 4.5',
+    'anthropic/claude-sonnet-4',
+    'Claude Sonnet 4',
   );
   static const claudeHaiku = LlmModel(
-    LlmProvider.anthropic,
-    'claude-haiku-4-5-20251001',
-    'Claude Haiku 4.5',
+    'anthropic/claude-haiku-4',
+    'Claude Haiku 4',
   );
 
-  // OpenAI
-  static const gpt4o = LlmModel(
-    LlmProvider.openai,
-    'gpt-4o',
-    'GPT-4o',
-  );
-  static const gpt4oMini = LlmModel(
-    LlmProvider.openai,
-    'gpt-4o-mini',
-    'GPT-4o Mini',
-  );
+  // OpenAI (via OpenRouter)
+  static const gpt4o = LlmModel('openai/gpt-4o', 'GPT-4o');
+  static const gpt4oMini = LlmModel('openai/gpt-4o-mini', 'GPT-4o Mini');
 
-  // Google Gemini
+  // Google Gemini (via OpenRouter)
   static const geminiPro = LlmModel(
-    LlmProvider.gemini,
-    'gemini-3-pro',
+    'google/gemini-3-pro-preview',
     'Gemini 3 Pro',
   );
   static const geminiFlash = LlmModel(
-    LlmProvider.gemini,
-    'gemini-3-flash',
+    'google/gemini-3-flash-preview',
     'Gemini 3 Flash',
   );
 
-  // Groq (OpenAI-compatible)
-  static const groqLlama70b = LlmModel(
-    LlmProvider.groq,
-    'llama-3.3-70b-versatile',
-    'Llama 3.3 70B (Groq)',
+  // Meta Llama (via OpenRouter)
+  static const llama4Maverick = LlmModel(
+    'meta-llama/llama-4-maverick',
+    'Llama 4 Maverick',
   );
-  static const groqLlama8b = LlmModel(
-    LlmProvider.groq,
-    'llama-3.1-8b-instant',
-    'Llama 3.1 8B (Groq)',
+  static const llama33_70b = LlmModel(
+    'meta-llama/llama-3.3-70b-instruct',
+    'Llama 3.3 70B',
   );
 
-  // Cerebras (OpenAI-compatible)
-  static const cerebrasLlama70b = LlmModel(
-    LlmProvider.cerebras,
-    'llama-3.3-70b',
-    'Llama 3.3 70B (Cerebras)',
-  );
-  static const cerebrasZaiGlm = LlmModel(
-    LlmProvider.cerebras,
-    'zai-glm-4.7',
-    'Zai GLM 4.7 (Cerebras)',
-  );
-
-  /// All available models.
+  /// All available preset models.
   static const all = [
     claudeSonnet,
     claudeHaiku,
@@ -93,11 +66,12 @@ class LlmModel {
     gpt4oMini,
     geminiPro,
     geminiFlash,
-    groqLlama70b,
-    groqLlama8b,
-    cerebrasLlama70b,
-    cerebrasZaiGlm,
+    llama4Maverick,
+    llama33_70b,
   ];
+
+  /// Default model when none specified.
+  static const defaultModel = geminiFlash;
 }
 
 /// Unified LLM client interface.
