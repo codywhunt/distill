@@ -8,6 +8,8 @@ import '../../models/models.dart';
 import '../../patch/patch_op.dart';
 import '../drag_session.dart';
 import '../drag_target.dart';
+import '../drop_preview.dart';
+import '../drop_preview_engine.dart';
 import '../../../../modules/canvas/canvas_state.dart';
 import 'frame_renderer.dart';
 import 'insertion_indicator_overlay.dart';
@@ -41,6 +43,9 @@ class FreeDesignCanvas extends StatefulWidget {
 class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
   InfiniteCanvasController? _internalController;
   final _focusNode = FocusNode();
+
+  /// Drop preview engine for computing drop targets.
+  static const _dropPreviewEngine = DropPreviewEngine();
 
   /// Returns the active controller (external or internal).
   InfiniteCanvasController get _controller =>
@@ -615,47 +620,142 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
       return;
     }
 
-    // Update drop target for move operations
+    // Update drop target for move operations using DropPreviewEngine
     if (session.mode == DragMode.move && session.targets.isNotEmpty) {
-      final target = session.targets.first;
+      final nodeTargets = session.targets.whereType<NodeTarget>().toList();
 
       // Only track drop target for nodes (not frames)
-      if (target is NodeTarget) {
-        // Detect drop target container
-        final frameId = target.frameId;
-        final dropTarget = widget.state.hitTestContainer(
-          frameId,
-          details.worldPosition,
-        );
-
-        // Update session drop target
-        session.dropTarget = dropTarget;
-        session.dropFrameId = frameId;
-
-        // Calculate insertion index if valid drop target
-        if (dropTarget != null) {
-          session.insertionIndex = widget.state.calculateInsertionIndex(
-            frameId,
-            dropTarget,
-            details.worldPosition,
+      if (nodeTargets.isNotEmpty) {
+        // All nodes must be in same frame for multi-select drop
+        final frameIds = nodeTargets.map((t) => t.frameId).toSet();
+        if (frameIds.length != 1) {
+          // Mixed frames - clear drop preview
+          session.dropPreview = const DropPreview.none(
+            invalidReason: 'Mixed frames in selection',
           );
-
-          // Calculate reflow offsets for sibling animation
-          if (session.insertionIndex != null) {
-            final draggedSize =
-                session.startSizes[target] ?? const Size(100, 100);
-            session.reflowOffsets = widget.state.calculateReflowOffsets(
-              frameId,
-              dropTarget,
-              session.insertionIndex!,
-              draggedSize,
-            );
-          } else {
-            session.reflowOffsets = {};
-          }
-        } else {
+          // Keep legacy fields in sync during migration
+          session.dropTarget = null;
+          session.dropFrameId = null;
           session.insertionIndex = null;
           session.reflowOffsets = {};
+        } else {
+          final frameId = frameIds.first;
+
+          // Get dragged node IDs and expanded IDs
+          final draggedDocIds = nodeTargets
+              .where((t) => t.patchTarget != null)
+              .map((t) => t.patchTarget!)
+              .toSet();
+          final draggedExpandedIds = nodeTargets
+              .map((t) => t.expandedId)
+              .toSet();
+
+          // Hit test for container (excluding dragged nodes)
+          var hit = widget.state.hitTestContainer(
+            frameId,
+            details.worldPosition,
+            excludeNodeIds: draggedDocIds,
+          );
+
+          // Adjust for sibling containers (use parent instead)
+          hit = widget.state.adjustDropTargetForSiblings(
+            hit,
+            draggedDocIds,
+            frameId,
+          );
+
+          // Validate drop target
+          final canDrop = hit != null && nodeTargets.every((target) {
+            if (target.patchTarget == null) return false;
+            return widget.state.canReparent(target.patchTarget!, hit!.patchId);
+          });
+
+          if (canDrop) {
+            // Get scene and render doc for the engine
+            final scene = widget.state.getExpandedScene(frameId);
+            final renderDoc = widget.state.getRenderDoc(frameId);
+
+            if (scene == null || renderDoc == null) {
+              session.dropPreview = const DropPreview.none(
+                invalidReason: 'Scene or render doc not available',
+              );
+            } else {
+              // Compute main-axis size of dragged bundle
+              final parent = widget.state.document.nodes[hit.patchId];
+              final direction = parent?.layout.autoLayout?.direction;
+              double mainAxisSize = 0;
+              for (final target in nodeTargets) {
+                final size = session.startSizes[target] ?? const Size(100, 100);
+                if (direction == LayoutDirection.horizontal) {
+                  mainAxisSize += size.width;
+                } else {
+                  mainAxisSize += size.height;
+                }
+              }
+
+              // Build input for the engine
+              final input = DropPreviewInput(
+                frameId: frameId,
+                worldCursorPos: details.worldPosition,
+                draggedDocIds: draggedDocIds,
+                draggedExpandedIds: draggedExpandedIds,
+                hitPatchId: hit.patchId,
+                hitExpandedId: hit.expandedId,
+                originalParents: session.originalParents,
+                lastInsertionIndex: session.lastInsertionIndex,
+                lastInsertionCursor: session.lastInsertionCursor,
+                zoom: _controller.zoom,
+                draggedMainAxisSize: mainAxisSize,
+              );
+
+              // Compute drop preview using the engine
+              final dropPreview = _dropPreviewEngine.compute(
+                input: input,
+                scene: scene,
+                renderDoc: renderDoc,
+                getBounds: widget.state.getNodeBoundsResolved,
+                getFramePos: (fId) {
+                  final frame = widget.state.document.frames[fId];
+                  return frame?.canvas.position ?? Offset.zero;
+                },
+                getNode: (docId) {
+                  final node = widget.state.document.nodes[docId];
+                  if (node == null) return null;
+                  return (layout: node.layout, childIds: node.childIds);
+                },
+              );
+
+              // Store on session
+              session.dropPreview = dropPreview;
+
+              // Update hysteresis state if index changed
+              if (dropPreview.insertionIndex != session.lastInsertionIndex) {
+                session.lastInsertionIndex = dropPreview.insertionIndex;
+                session.lastInsertionCursor = details.worldPosition;
+              }
+
+              // Keep legacy fields in sync during migration
+              session.dropTarget = dropPreview.parentDocId;
+              session.dropTargetExpandedId = dropPreview.parentExpandedId;
+              session.dropFrameId = frameId;
+              session.insertionIndex = dropPreview.insertionIndex;
+              session.insertionChildren = dropPreview.childrenDocIds;
+              session.reflowOffsets = dropPreview.reflowOffsetsByExpandedId;
+            }
+          } else {
+            // Invalid drop target
+            session.dropPreview = DropPreview.none(
+              invalidReason: hit == null
+                  ? 'No container hit'
+                  : 'Cannot reparent to ${hit.patchId}',
+            );
+            // Keep legacy fields in sync during migration
+            session.dropTarget = null;
+            session.dropTargetExpandedId = null;
+            session.dropFrameId = null;
+            session.insertionIndex = null;
+            session.reflowOffsets = {};
+          }
         }
       }
     }

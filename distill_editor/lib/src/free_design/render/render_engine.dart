@@ -145,16 +145,10 @@ class RenderEngine {
                   childNode?.propOr<String>('positionMode', 'auto') ?? 'auto';
 
               if (positionMode == 'absolute') {
-                var x = childNode?.propOr<double>('x', 0.0) ?? 0.0;
-                var y = childNode?.propOr<double>('y', 0.0) ?? 0.0;
+                final x = childNode?.propOr<double>('x', 0.0) ?? 0.0;
+                final y = childNode?.propOr<double>('y', 0.0) ?? 0.0;
 
-                // Apply reflow offset if present (for drag animation)
-                final reflowOffset = reflowOffsets[entry.key];
-                if (reflowOffset != null) {
-                  x += reflowOffset.dx;
-                  y += reflowOffset.dy;
-                }
-
+                // Note: reflow offset is applied in _applySizing Step 4 (single place)
                 return Positioned(
                   left: x,
                   top: y,
@@ -207,16 +201,9 @@ class RenderEngine {
       final childNode = doc.nodes[entry.key];
       if (childNode == null) continue;
 
-      var child = entry.value;
+      final child = entry.value;
 
-      // Apply reflow offset BEFORE Fill sizing (so Transform wraps Expanded correctly)
-      final reflowOffset = reflowOffsets[entry.key];
-      if (reflowOffset != null) {
-        child = Transform.translate(
-          offset: reflowOffset,
-          child: child,
-        );
-      }
+      // Note: reflow offset is applied in _applySizing Step 4 (single place)
 
       // Apply child Fill sizing for auto-layout
       final (sizedChild, hasMainAxisFill) = _applyChildFillSizing(
@@ -281,16 +268,9 @@ class RenderEngine {
       final childNode = doc.nodes[entry.key];
       if (childNode == null) continue;
 
-      var child = entry.value;
+      final child = entry.value;
 
-      // Apply reflow offset BEFORE Fill sizing (so Transform wraps Expanded correctly)
-      final reflowOffset = reflowOffsets[entry.key];
-      if (reflowOffset != null) {
-        child = Transform.translate(
-          offset: reflowOffset,
-          child: child,
-        );
-      }
+      // Note: reflow offset is applied in _applySizing Step 4 (single place)
 
       // Apply child Fill sizing for auto-layout
       final (sizedChild, hasMainAxisFill) = _applyChildFillSizing(

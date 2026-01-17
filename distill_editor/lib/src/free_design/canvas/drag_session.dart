@@ -4,6 +4,7 @@ import 'package:distill_canvas/utilities.dart';
 
 import '../patch/patch_op.dart';
 import 'drag_target.dart';
+import 'drop_preview.dart';
 
 export 'package:distill_canvas/utilities.dart' show ResizeEdge;
 
@@ -101,8 +102,12 @@ class DragSession {
   /// Start position for marquee mode (world coordinates).
   final Offset? marqueeStart;
 
-  /// Currently hovered drop target (parent container ID).
+  /// Currently hovered drop target (document node ID for patching).
   String? dropTarget;
+
+  /// Expanded ID of the drop target (for bounds lookup in render tree).
+  /// This is the specific instance in the expanded scene that was hit-tested.
+  String? dropTargetExpandedId;
 
   /// Insertion index within drop target.
   int? insertionIndex;
@@ -114,8 +119,25 @@ class DragSession {
   final Map<String, String> originalParents;
 
   /// Reflow offsets for siblings during drag (for animation preview).
-  /// Maps node ID → offset to apply temporarily.
+  /// Maps expandedId → offset to apply temporarily.
   Map<String, Offset> reflowOffsets;
+
+  /// Filtered children list for insertion (excludes dragged nodes).
+  /// Computed once during drag update and reused for indicator + reflow.
+  List<String> insertionChildren;
+
+  /// Last insertion index for hysteresis (prevents flip-flop at center).
+  int? lastInsertionIndex;
+
+  /// Last cursor position when insertion index changed (for hysteresis).
+  Offset? lastInsertionCursor;
+
+  /// Single source of truth for drop preview state.
+  ///
+  /// This replaces the scattered fields (dropTarget, dropTargetExpandedId,
+  /// insertionIndex, reflowOffsets, insertionChildren) with one authoritative
+  /// model computed by DropPreviewEngine.
+  DropPreview? dropPreview;
 
   DragSession._({
     required this.mode,
@@ -129,9 +151,14 @@ class DragSession {
     this.originalParents = const {},
   }) : snapOffset = Offset.zero,
        dropTarget = null,
+       dropTargetExpandedId = null,
        insertionIndex = null,
        dropFrameId = null,
-       reflowOffsets = const {};
+       reflowOffsets = const {},
+       insertionChildren = const [],
+       lastInsertionIndex = null,
+       lastInsertionCursor = null,
+       dropPreview = null;
 
   /// Creates a move drag session.
   factory DragSession.move({

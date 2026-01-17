@@ -9,6 +9,12 @@ import '../drag_session.dart';
 ///
 /// Renders a Figma-style insertion indicator (blue line) at the calculated
 /// insertion index within the drop target container.
+///
+/// ## Key Design Principle
+///
+/// This overlay is now "dumb" - it simply reads from `session.dropPreview.indicatorWorldRect`
+/// and paints it. All calculation logic is centralized in DropPreviewEngine.
+/// No derived logic or bounds lookups happen here.
 class InsertionIndicatorOverlay extends StatelessWidget {
   const InsertionIndicatorOverlay({
     required this.state,
@@ -23,206 +29,51 @@ class InsertionIndicatorOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = state.dragSession;
 
-    // Only show during move drag with valid drop target
-    if (session == null ||
-        session.mode != DragMode.move ||
-        session.dropTarget == null ||
-        session.dropFrameId == null ||
-        session.insertionIndex == null) {
+    // Only show during move drag
+    if (session == null || session.mode != DragMode.move) {
       return const SizedBox.shrink();
     }
 
-    final indicator = _calculateIndicatorBounds(
-      session.dropFrameId!,
-      session.dropTarget!,
-      session.insertionIndex!,
-    );
+    // Read directly from the authoritative DropPreview model
+    final dropPreview = session.dropPreview;
 
-    if (indicator == null) return const SizedBox.shrink();
+    // Check if we should show the indicator
+    if (dropPreview == null || !dropPreview.shouldShowIndicator) {
+      // DEBUG: Log why indicator isn't showing
+      if (dropPreview != null) {
+        print('[Indicator] Not showing: '
+            'isValid=${dropPreview.isValid}, '
+            'indicatorRect=${dropPreview.indicatorWorldRect != null}, '
+            'direction=${dropPreview.direction}, '
+            'kind=${dropPreview.kind}, '
+            'invalidReason=${dropPreview.invalidReason}');
+      }
+      return const SizedBox.shrink();
+    }
+
+    // The indicator rect is already computed by DropPreviewEngine
+    // Just paint it - no further calculation needed!
+    final indicatorWorldRect = dropPreview.indicatorWorldRect!;
+    final direction = dropPreview.direction!;
+
+    print('[Indicator] Drawing from DropPreview: '
+        'rect=$indicatorWorldRect, '
+        'direction=$direction, '
+        'kind=${dropPreview.kind}, '
+        'insertionIndex=${dropPreview.insertionIndex}');
 
     // Convert to view coordinates
-    final viewBounds = controller.worldToViewRect(indicator.bounds);
+    final viewBounds = controller.worldToViewRect(indicatorWorldRect);
+
+    // Determine axis for painter (perpendicular to layout direction)
+    final axis = direction == LayoutDirection.horizontal
+        ? Axis.vertical
+        : Axis.horizontal;
 
     return CustomPaint(
-      painter: InsertionLinePainter(bounds: viewBounds, axis: indicator.axis),
+      painter: InsertionLinePainter(bounds: viewBounds, axis: axis),
     );
   }
-
-  /// Calculate world bounds for insertion indicator line.
-  _IndicatorBounds? _calculateIndicatorBounds(
-    String frameId,
-    String parentId,
-    int insertionIndex,
-  ) {
-    final parent = state.document.nodes[parentId];
-    if (parent?.layout.autoLayout == null) return null;
-
-    final frame = state.document.frames[frameId];
-    if (frame == null) return null;
-
-    final direction = parent!.layout.autoLayout!.direction;
-    final parentBounds = _getParentBounds(frameId, parentId);
-    if (parentBounds == null) return null;
-
-    // Convert parent bounds to world coordinates
-    final parentWorld = Rect.fromLTWH(
-      frame.canvas.position.dx + parentBounds.left,
-      frame.canvas.position.dy + parentBounds.top,
-      parentBounds.width,
-      parentBounds.height,
-    );
-
-    // Get padding
-    final padding = parent.layout.autoLayout!.padding;
-
-    // Calculate indicator position based on insertion index
-    Rect indicatorBounds;
-
-    if (insertionIndex == 0) {
-      // Insert at beginning (after padding)
-      if (direction == LayoutDirection.horizontal) {
-        indicatorBounds = Rect.fromLTWH(
-          parentWorld.left + padding.left.toDouble(),
-          parentWorld.top + padding.top.toDouble(),
-          2, // Line width
-          parentWorld.height -
-              padding.top.toDouble() -
-              padding.bottom.toDouble(),
-        );
-      } else {
-        indicatorBounds = Rect.fromLTWH(
-          parentWorld.left + padding.left.toDouble(),
-          parentWorld.top + padding.top.toDouble(),
-          parentWorld.width -
-              padding.left.toDouble() -
-              padding.right.toDouble(),
-          2, // Line height
-        );
-      }
-    } else if (insertionIndex >= parent.childIds.length) {
-      // Insert at end (before padding)
-      final lastChildId = parent.childIds.last;
-      final lastBounds = _getChildBounds(frameId, parentId, lastChildId);
-
-      if (lastBounds == null) return null;
-
-      // Convert to world
-      final lastWorld = Rect.fromLTWH(
-        frame.canvas.position.dx + lastBounds.left,
-        frame.canvas.position.dy + lastBounds.top,
-        lastBounds.width,
-        lastBounds.height,
-      );
-
-      final gap = parent.layout.autoLayout!.gap?.toDouble() ?? 0;
-
-      if (direction == LayoutDirection.horizontal) {
-        indicatorBounds = Rect.fromLTWH(
-          lastWorld.right + gap,
-          parentWorld.top + padding.top.toDouble(),
-          2,
-          parentWorld.height -
-              padding.top.toDouble() -
-              padding.bottom.toDouble(),
-        );
-      } else {
-        indicatorBounds = Rect.fromLTWH(
-          parentWorld.left + padding.left.toDouble(),
-          lastWorld.bottom + gap,
-          parentWorld.width -
-              padding.left.toDouble() -
-              padding.right.toDouble(),
-          2,
-        );
-      }
-    } else {
-      // Insert between children
-      final prevChildId = parent.childIds[insertionIndex - 1];
-      final prevBounds = _getChildBounds(frameId, parentId, prevChildId);
-
-      if (prevBounds == null) return null;
-
-      final prevWorld = Rect.fromLTWH(
-        frame.canvas.position.dx + prevBounds.left,
-        frame.canvas.position.dy + prevBounds.top,
-        prevBounds.width,
-        prevBounds.height,
-      );
-
-      final gap = parent.layout.autoLayout!.gap?.toDouble() ?? 0;
-
-      if (direction == LayoutDirection.horizontal) {
-        indicatorBounds = Rect.fromLTWH(
-          prevWorld.right + gap / 2,
-          parentWorld.top + padding.top.toDouble(),
-          2,
-          parentWorld.height -
-              padding.top.toDouble() -
-              padding.bottom.toDouble(),
-        );
-      } else {
-        indicatorBounds = Rect.fromLTWH(
-          parentWorld.left + padding.left.toDouble(),
-          prevWorld.bottom + gap / 2,
-          parentWorld.width -
-              padding.left.toDouble() -
-              padding.right.toDouble(),
-          2,
-        );
-      }
-    }
-
-    return _IndicatorBounds(
-      bounds: indicatorBounds,
-      axis: direction == LayoutDirection.horizontal
-          ? Axis.vertical
-          : Axis.horizontal,
-    );
-  }
-
-  /// Get parent bounds in frame-local coordinates.
-  Rect? _getParentBounds(String frameId, String parentId) {
-    final scene = state.getExpandedScene(frameId);
-    if (scene == null) return null;
-
-    // Find expanded ID for this parent
-    String? parentExpandedId;
-    for (final entry in scene.patchTarget.entries) {
-      if (entry.value == parentId) {
-        parentExpandedId = entry.key;
-        break;
-      }
-    }
-
-    if (parentExpandedId == null) return null;
-    return state.getNodeBounds(frameId, parentExpandedId);
-  }
-
-  /// Get child bounds in frame-local coordinates.
-  Rect? _getChildBounds(String frameId, String parentId, String childId) {
-    final scene = state.getExpandedScene(frameId);
-    if (scene == null) return null;
-
-    // Find expanded ID for this child
-    String? childExpandedId;
-    for (final entry in scene.patchTarget.entries) {
-      if (entry.value == childId) {
-        childExpandedId = entry.key;
-        break;
-      }
-    }
-
-    if (childExpandedId == null) return null;
-    return state.getNodeBounds(frameId, childExpandedId);
-  }
-}
-
-/// Bounds and axis for insertion indicator line.
-class _IndicatorBounds {
-  final Rect bounds;
-  final Axis axis;
-
-  _IndicatorBounds({required this.bounds, required this.axis});
 }
 
 /// Custom painter for the insertion indicator line.
@@ -242,8 +93,7 @@ class InsertionLinePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final linePaint = Paint()
-      ..color =
-          const Color(0xFF007AFF) // Figma blue
+      ..color = const Color(0xFF007AFF) // Figma blue
       ..strokeWidth = 3.0
       ..style = PaintingStyle.stroke;
 
