@@ -853,13 +853,27 @@ class _InfiniteCanvasState extends State<InfiniteCanvas>
 
     // Regular scroll = Pan (only if scroll-pan is enabled)
     if (widget.gestureConfig.enableScrollPan) {
-      // Natural scrolling: content moves with finger direction (like paper)
-      // Traditional scrolling: content moves opposite to scroll (like scrollbar)
-      final sign = widget.gestureConfig.naturalScrolling ? 1.0 : -1.0;
+      // Mouse wheel scrollDelta on macOS uses traditional direction (scroll down = positive dy).
+      // Trackpad two-finger scroll uses PointerPanZoomUpdateEvent which respects OS natural scrolling.
+      // To make mouse wheel feel consistent with trackpad natural scrolling, we invert it.
+      // naturalScrolling=true: mouse wheel inverted (-1), trackpad handled by OS
+      // naturalScrolling=false: mouse wheel normal (1), trackpad also uses -1 in its handler
+      final sign = widget.gestureConfig.naturalScrolling ? -1.0 : 1.0;
       final sensitivity = widget.momentumConfig.scrollSensitivity;
+
+      // Shift+scroll converts vertical scroll to horizontal pan.
+      // macOS may or may not do this automatically depending on Flutter version,
+      // so we handle it explicitly.
+      var dx = event.scrollDelta.dx;
+      var dy = event.scrollDelta.dy;
+      if (keyboard.isShiftPressed && dy != 0 && dx == 0) {
+        dx = dy;
+        dy = 0;
+      }
+
       final panDelta = Offset(
-        event.scrollDelta.dx * sign * sensitivity,
-        event.scrollDelta.dy * sign * sensitivity,
+        dx * sign * sensitivity,
+        dy * sign * sensitivity,
       );
       _controller.panBy(panDelta);
       _notifyViewportChanged();

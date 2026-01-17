@@ -263,9 +263,12 @@ void main() {
           originalParents: {'child': 'parent'},
         );
 
-        // Preview should be valid but indicator null due to collapsed content
+        // INV-Y + indicator hardening: With extreme padding that collapses content,
+        // we fall back to parent bounds with 1px inset. Since parent is 100x100,
+        // the fallback content box is 98x98 which is valid, so indicator is computed.
+        // This avoids dead zones for small containers.
         expect(preview.isValid, isTrue);
-        expect(preview.indicatorWorldRect, isNull);
+        expect(preview.indicatorWorldRect, isNotNull);
       });
     });
 
@@ -524,6 +527,323 @@ void main() {
 
         expect(preview.isValid, isFalse);
         expect(preview.invalidReason, contains('descendant'));
+      });
+    });
+
+    // =========================================================================
+    // INV-E: Eligibility Contract
+    // =========================================================================
+    group('INV-E: eligibility contract', () {
+      test('cursor over non-eligible container resolves to nearest eligible ancestor', () {
+        // When hit test returns a container without auto-layout, we should climb
+        // to find the nearest auto-layout ancestor
+        final harness = DragDropUnitHarness(
+          boundsByExpandedId: {
+            'root': const Rect.fromLTWH(0, 0, 300, 200),
+            'non_auto': const Rect.fromLTWH(10, 10, 280, 180),
+            'item': const Rect.fromLTWH(20, 20, 100, 50),
+          },
+          renderChildrenByExpandedId: {
+            'root': ['non_auto'],
+            'non_auto': ['item'],
+            'item': [],
+          },
+          expandedToDoc: {
+            'root': 'root',
+            'non_auto': 'non_auto',
+            'item': 'item',
+          },
+          expandedParent: {
+            'root': null,
+            'non_auto': 'root',
+            'item': 'non_auto',
+          },
+          paintOrder: ['root', 'non_auto', 'item'],
+          autoLayoutByDocId: {
+            'root': const AutoLayout(direction: LayoutDirection.vertical),
+            // 'non_auto' has NO auto-layout
+          },
+        );
+
+        // Hit test returns non_auto (which is not eligible)
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'non_auto',
+          docId: 'non_auto',
+        );
+
+        final preview = harness.computePreview(
+          cursorWorld: const Offset(70, 45),
+          draggedExpandedIds: ['item'],
+          draggedDocIds: ['item'],
+          originalParents: {'item': 'non_auto'},
+        );
+
+        // Should climb to root (the nearest eligible ancestor)
+        expect(preview.isValid, isTrue);
+        expect(preview.targetParentExpandedId, equals('root'));
+      });
+
+      test('cursor over eligible nested container resolves to that container', () {
+        final harness = DragDropUnitHarness(
+          boundsByExpandedId: {
+            'root': const Rect.fromLTWH(0, 0, 300, 200),
+            'nested_auto': const Rect.fromLTWH(10, 10, 280, 180),
+            'item': const Rect.fromLTWH(20, 20, 100, 50),
+          },
+          renderChildrenByExpandedId: {
+            'root': ['nested_auto'],
+            'nested_auto': ['item'],
+            'item': [],
+          },
+          expandedToDoc: {
+            'root': 'root',
+            'nested_auto': 'nested_auto',
+            'item': 'item',
+          },
+          expandedParent: {
+            'root': null,
+            'nested_auto': 'root',
+            'item': 'nested_auto',
+          },
+          paintOrder: ['root', 'nested_auto', 'item'],
+          autoLayoutByDocId: {
+            'root': const AutoLayout(direction: LayoutDirection.vertical),
+            'nested_auto': const AutoLayout(direction: LayoutDirection.horizontal),
+          },
+        );
+
+        // Hit test returns nested_auto (which IS eligible)
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'nested_auto',
+          docId: 'nested_auto',
+        );
+
+        final preview = harness.computePreview(
+          cursorWorld: const Offset(70, 45),
+          draggedExpandedIds: ['item'],
+          draggedDocIds: ['item'],
+          originalParents: {'item': 'nested_auto'},
+        );
+
+        // Should target nested_auto directly (it's eligible)
+        expect(preview.isValid, isTrue);
+        expect(preview.targetParentExpandedId, equals('nested_auto'));
+      });
+
+      test('no eligible ancestor returns invalid preview with reason', () {
+        // When there's no auto-layout container in the hierarchy
+        final harness = DragDropUnitHarness(
+          boundsByExpandedId: {
+            'root': const Rect.fromLTWH(0, 0, 300, 200),
+            'non_auto': const Rect.fromLTWH(10, 10, 280, 180),
+            'item': const Rect.fromLTWH(20, 20, 100, 50),
+          },
+          renderChildrenByExpandedId: {
+            'root': ['non_auto'],
+            'non_auto': ['item'],
+            'item': [],
+          },
+          expandedToDoc: {
+            'root': 'root',
+            'non_auto': 'non_auto',
+            'item': 'item',
+          },
+          expandedParent: {
+            'root': null,
+            'non_auto': 'root',
+            'item': 'non_auto',
+          },
+          paintOrder: ['root', 'non_auto', 'item'],
+          autoLayoutByDocId: {
+            // NO auto-layout anywhere!
+          },
+        );
+
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'non_auto',
+          docId: 'non_auto',
+        );
+
+        final preview = harness.computePreview(
+          cursorWorld: const Offset(70, 45),
+          draggedExpandedIds: ['item'],
+          draggedDocIds: ['item'],
+          originalParents: {'item': 'non_auto'},
+        );
+
+        expect(preview.isValid, isFalse);
+        expect(preview.invalidReason, isNotNull);
+      });
+
+      test('dragged container is not eligible as drop target', () {
+        // A container being dragged cannot be its own drop target
+        final harness = DragDropUnitHarness(
+          boundsByExpandedId: {
+            'grandparent': const Rect.fromLTWH(0, 0, 400, 400),
+            'parent': const Rect.fromLTWH(20, 20, 360, 360),
+            'child': const Rect.fromLTWH(40, 40, 100, 50),
+          },
+          renderChildrenByExpandedId: {
+            'grandparent': ['parent'],
+            'parent': ['child'],
+            'child': [],
+          },
+          expandedToDoc: {
+            'grandparent': 'grandparent',
+            'parent': 'parent',
+            'child': 'child',
+          },
+          expandedParent: {
+            'grandparent': null,
+            'parent': 'grandparent',
+            'child': 'parent',
+          },
+          paintOrder: ['grandparent', 'parent', 'child'],
+          autoLayoutByDocId: {
+            'grandparent': const AutoLayout(direction: LayoutDirection.vertical),
+            'parent': const AutoLayout(direction: LayoutDirection.vertical),
+          },
+        );
+
+        // Hit test returns parent, but we're dragging parent
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'parent',
+          docId: 'parent',
+        );
+
+        final preview = harness.computePreview(
+          cursorWorld: const Offset(100, 100),
+          draggedExpandedIds: ['parent'],
+          draggedDocIds: ['parent'],
+          originalParents: {'parent': 'grandparent'},
+        );
+
+        // Should NOT target parent (it's being dragged), should climb to grandparent
+        expect(preview.isValid, isTrue);
+        expect(preview.targetParentExpandedId, equals('grandparent'));
+      });
+    });
+
+    // =========================================================================
+    // INV-Y: Valid Drop Requires Non-Null Indicator
+    // =========================================================================
+    group('INV-Y: valid drop requires non-null indicator', () {
+      test('valid reorder has non-null indicator', () {
+        final harness = DragDropUnitHarness.verticalColumn(childCount: 3);
+
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'parent',
+          docId: 'parent',
+        );
+
+        final cursorWorld = harness.cursorAtSlot('parent', 1);
+
+        final preview = harness.computePreview(
+          cursorWorld: cursorWorld,
+          draggedExpandedIds: ['child_0'],
+          draggedDocIds: ['child_0'],
+          originalParents: {'child_0': 'parent'},
+        );
+
+        expect(preview.isValid, isTrue);
+        expect(preview.intent, equals(DropIntent.reorder));
+        expect(preview.indicatorWorldRect, isNotNull);
+      });
+
+      test('valid reparent has non-null indicator', () {
+        final harness = DragDropUnitHarness(
+          boundsByExpandedId: {
+            'root': const Rect.fromLTWH(0, 0, 400, 200),
+            'parent_a': const Rect.fromLTWH(10, 10, 180, 180),
+            'parent_b': const Rect.fromLTWH(210, 10, 180, 180),
+            'child': const Rect.fromLTWH(20, 20, 80, 40),
+          },
+          renderChildrenByExpandedId: {
+            'root': ['parent_a', 'parent_b'],
+            'parent_a': ['child'],
+            'parent_b': [],
+          },
+          expandedToDoc: {
+            'root': 'root',
+            'parent_a': 'parent_a',
+            'parent_b': 'parent_b',
+            'child': 'child',
+          },
+          expandedParent: {
+            'root': null,
+            'parent_a': 'root',
+            'parent_b': 'root',
+            'child': 'parent_a',
+          },
+          paintOrder: ['root', 'parent_a', 'child', 'parent_b'],
+          autoLayoutByDocId: {
+            'root': const AutoLayout(direction: LayoutDirection.horizontal),
+            'parent_a': const AutoLayout(direction: LayoutDirection.vertical),
+            'parent_b': const AutoLayout(direction: LayoutDirection.vertical),
+          },
+        );
+
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'parent_b',
+          docId: 'parent_b',
+        );
+
+        final preview = harness.computePreview(
+          cursorWorld: const Offset(300, 100),
+          draggedExpandedIds: ['child'],
+          draggedDocIds: ['child'],
+          originalParents: {'child': 'parent_a'},
+        );
+
+        expect(preview.isValid, isTrue);
+        expect(preview.intent, equals(DropIntent.reparent));
+        expect(preview.indicatorWorldRect, isNotNull);
+      });
+
+      test('tiny container yields valid indicator (expanded to minimum)', () {
+        // Test that indicator hardening expands tiny containers
+        final harness = DragDropUnitHarness(
+          boundsByExpandedId: {
+            'parent': const Rect.fromLTWH(0, 0, 20, 100), // Very narrow
+            'child_0': const Rect.fromLTWH(0, 0, 20, 40),
+            'child_1': const Rect.fromLTWH(0, 50, 20, 40),
+          },
+          renderChildrenByExpandedId: {
+            'parent': ['child_0', 'child_1'],
+            'child_0': [],
+            'child_1': [],
+          },
+          expandedToDoc: {
+            'parent': 'parent',
+            'child_0': 'child_0',
+            'child_1': 'child_1',
+          },
+          expandedParent: {
+            'parent': null,
+            'child_0': 'parent',
+            'child_1': 'parent',
+          },
+          paintOrder: ['parent', 'child_0', 'child_1'],
+          autoLayoutByDocId: {
+            'parent': const AutoLayout(direction: LayoutDirection.vertical),
+          },
+        );
+
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'parent',
+          docId: 'parent',
+        );
+
+        final preview = harness.computePreview(
+          cursorWorld: const Offset(10, 45), // Between children
+          draggedExpandedIds: ['child_0'],
+          draggedDocIds: ['child_0'],
+          originalParents: {'child_0': 'parent'},
+        );
+
+        // With indicator hardening, should still get valid indicator
+        expect(preview.isValid, isTrue);
+        expect(preview.indicatorWorldRect, isNotNull);
       });
     });
   });

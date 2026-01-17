@@ -180,69 +180,89 @@ class DropPreviewBuilder {
     _debugLog('Frame: $frameId, cursor: $cursorWorld, frameLocal: $cursorFrameLocal');
 
     // -------------------------------------------------------------------------
-    // Step 2: Hit Test Container (INV-1)
+    // Step 1b: Origin-First Targeting (INV-Z)
     // -------------------------------------------------------------------------
+    // If cursor is inside origin content rect (+ hysteresis), use origin as
+    // target WITHOUT running hit-test. This prevents nested containers from
+    // "stealing" the drop target during reorder operations.
 
-    final hit = hitTestContainer(frameId, cursorWorld, draggedExpandedIds);
-    if (hit == null) {
-      _debugLog('No container hit');
-      return DropPreview.none(
-        frameId: frameId,
-        invalidReason: 'no container hit',
-        draggedDocIdsOrdered: draggedDocIdsOrdered,
-        draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
-      );
-    }
-
-    _debugLog('Hit: expandedId=${hit.expandedId}, docId=${hit.docId}');
-
-    // -------------------------------------------------------------------------
-    // Step 3: Climb to Auto-Layout Ancestor (INV-4)
-    // -------------------------------------------------------------------------
-
-    final resolved = _resolveEligibleTarget(
-      hit: hit,
-      document: document,
-      lookups: lookups,
-    );
-
-    if (resolved == null) {
-      _debugLog('No auto-layout ancestor found');
-      return DropPreview.none(
-        frameId: frameId,
-        invalidReason: 'no auto-layout ancestor found',
-        draggedDocIdsOrdered: draggedDocIdsOrdered,
-        draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
-      );
-    }
-
-    final targetExpandedId = resolved.expandedId;
-    final targetDocId = resolved.docId;
-
-    _debugLog('Resolved target: expandedId=$targetExpandedId, docId=$targetDocId');
-
-    // -------------------------------------------------------------------------
-    // Step 3b: Origin Stickiness Check (Smart)
-    // -------------------------------------------------------------------------
-    // Stickiness applies when:
-    //   1. Cursor is inside origin content rect AND
-    //   2. The resolved eligible target IS the origin parent
-    //
-    // If resolved target is different (e.g., nested container), allow reparent.
-    // This matches Figma feel - stickiness doesn't override a more specific target.
-    //
-    // NOTE: We don't force the target here - we just log when stickiness confirms
-    // a reorder. The resolved target is already correct; this check just validates
-    // that we're staying in the origin parent when appropriate.
+    String? targetExpandedId;
+    String? targetDocId;
+    // Track hovered container for debug logging (may differ from resolved target)
+    String? hoveredExpandedId;
+    String? hoveredDocId;
 
     if (originParentExpandedId != null &&
-        originParentContentWorldRect != null &&
-        originParentContentWorldRect.contains(cursorWorld) &&
-        targetExpandedId == originParentExpandedId) {
-      _debugLog('Stickiness: resolved target is origin parent, confirming reorder');
+        originParentContentWorldRect != null) {
+      // Safety: don't origin-lock if origin parent is being dragged
+      if (!draggedExpandedIds.contains(originParentExpandedId)) {
+        final stickyRect =
+            originParentContentWorldRect.inflate(kHysteresisPixels / zoom);
+
+        if (stickyRect.contains(cursorWorld)) {
+          final originDocId = lookups.getDocId(originParentExpandedId);
+          // Safety: origin must be patchable
+          if (originDocId != null) {
+            final originNode = document.nodes[originDocId];
+            if (originNode?.layout.autoLayout != null) {
+              _debugLog(
+                  'Origin-first: cursor inside origin rect, target = origin');
+              targetExpandedId = originParentExpandedId;
+              targetDocId = originDocId;
+              hoveredExpandedId = originParentExpandedId;
+              hoveredDocId = originDocId;
+            }
+          }
+        }
+      }
     }
-    // If resolved != origin, we allow reparent even if cursor is in origin rect
-    // (e.g., hovering a nested container within origin)
+
+    // -------------------------------------------------------------------------
+    // Step 2: Hit Test Container (INV-1) - only if origin-first didn't match
+    // -------------------------------------------------------------------------
+
+    if (targetExpandedId == null) {
+      final hit = hitTestContainer(frameId, cursorWorld, draggedExpandedIds);
+      if (hit == null) {
+        _debugLog('No container hit');
+        return DropPreview.none(
+          frameId: frameId,
+          invalidReason: 'no container hit',
+          draggedDocIdsOrdered: draggedDocIdsOrdered,
+          draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
+        );
+      }
+
+      _debugLog('Hit: expandedId=${hit.expandedId}, docId=${hit.docId}');
+      hoveredExpandedId = hit.expandedId;
+      hoveredDocId = hit.docId;
+
+      // -----------------------------------------------------------------------
+      // Step 3: Climb to Auto-Layout Ancestor (INV-4)
+      // -----------------------------------------------------------------------
+
+      final resolved = _resolveEligibleTarget(
+        hit: hit,
+        document: document,
+        lookups: lookups,
+        draggedExpandedIds: draggedExpandedIds,
+      );
+
+      if (resolved == null) {
+        _debugLog('No auto-layout ancestor found');
+        return DropPreview.none(
+          frameId: frameId,
+          invalidReason: 'no auto-layout ancestor found',
+          draggedDocIdsOrdered: draggedDocIdsOrdered,
+          draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
+        );
+      }
+
+      targetExpandedId = resolved.expandedId;
+      targetDocId = resolved.docId;
+    }
+
+    _debugLog('Resolved target: expandedId=$targetExpandedId, docId=$targetDocId');
 
     // -------------------------------------------------------------------------
     // Step 4: Validate Patchability & Constraints
@@ -398,6 +418,17 @@ class DropPreviewBuilder {
     // Step 10: Build and Return DropPreview
     // -------------------------------------------------------------------------
 
+    // INV-Y: Valid drop (intent != none) requires non-null indicator
+    if (indicatorResult == null && intent != DropIntent.none) {
+      _debugLog('INV-Y: Indicator null for $intent - marking invalid');
+      return DropPreview.none(
+        frameId: frameId,
+        invalidReason: 'could not compute indicator for target',
+        draggedDocIdsOrdered: draggedDocIdsOrdered,
+        draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
+      );
+    }
+
     final preview = DropPreview(
       intent: intent,
       isValid: true,
@@ -425,8 +456,8 @@ class DropPreviewBuilder {
     // Consolidated debug log with all intermediate values per spec Section 12
     DragDebugLogger.logDropPreview(
       preview,
-      hoveredExpandedId: hit.expandedId,
-      hoveredDocId: hit.docId,
+      hoveredExpandedId: hoveredExpandedId,
+      hoveredDocId: hoveredDocId,
       isAutoLayout: true, // We only reach here if target is auto-layout
     );
 
@@ -447,34 +478,51 @@ class DropPreviewBuilder {
     return parents.first;
   }
 
-  /// Climb parent chain to find eligible auto-layout container (INV-4).
+  /// Check if a container is an eligible drop parent (INV-E).
   ///
-  /// Returns the first container with `autoLayout != null`.
-  /// Returns null if no auto-layout ancestor found before frame root.
+  /// Eligibility requires ALL of:
+  /// - docId is non-null (patchable)
+  /// - doc node has autoLayout (v1 restriction)
+  /// - not being dragged
+  bool _isEligibleDropParent(
+    String? docId,
+    String expandedId,
+    EditorDocument document,
+    Set<String> draggedExpandedIds,
+  ) {
+    if (docId == null) return false;
+    if (draggedExpandedIds.contains(expandedId)) return false;
+    final docNode = document.nodes[docId];
+    return docNode?.layout.autoLayout != null;
+  }
+
+  /// Climb parent chain to find eligible drop parent (INV-4, INV-E).
+  ///
+  /// Returns the first container that is eligible (patchable + auto-layout +
+  /// not dragged). Returns null if no eligible ancestor found.
   ContainerHit? _resolveEligibleTarget({
     required ContainerHit hit,
     required EditorDocument document,
     required FrameLookups lookups,
+    required Set<String> draggedExpandedIds,
   }) {
     String? currentExpanded = hit.expandedId;
     String? currentDoc = hit.docId;
 
     while (currentExpanded != null) {
-      // Check if current node has auto-layout
-      if (currentDoc != null) {
-        final docNode = document.nodes[currentDoc];
-        if (docNode != null && docNode.layout.autoLayout != null) {
-          return ContainerHit(
-            expandedId: currentExpanded,
-            docId: currentDoc,
-          );
-        }
+      // Check if current node is eligible
+      if (_isEligibleDropParent(
+          currentDoc, currentExpanded, document, draggedExpandedIds)) {
+        return ContainerHit(
+          expandedId: currentExpanded,
+          docId: currentDoc,
+        );
       }
 
       // Climb to parent
       final parentExpanded = lookups.getParent(currentExpanded);
       if (parentExpanded == null) {
-        // Reached root without finding auto-layout
+        // Reached root without finding eligible target
         return null;
       }
 
@@ -577,16 +625,26 @@ class DropPreviewBuilder {
     final padBottom = padding.bottom.toDouble();
 
     // Compute content box (after padding) in frame-local coordinates
-    final contentBox = Rect.fromLTRB(
+    var contentBox = Rect.fromLTRB(
       parentBounds.left + padLeft,
       parentBounds.top + padTop,
       parentBounds.right - padRight,
       parentBounds.bottom - padBottom,
     );
 
-    // INV-6: Collapsed content area → no indicator
+    // INV-6: Collapsed content area → clamp to minimum viable size
+    // Fall back to parent bounds with minimal inset to avoid dead zones
     if (contentBox.width <= 0 || contentBox.height <= 0) {
-      return null;
+      contentBox = Rect.fromLTRB(
+        parentBounds.left + 1,
+        parentBounds.top + 1,
+        parentBounds.right - 1,
+        parentBounds.bottom - 1,
+      );
+      // Parent itself is too small - truly invalid
+      if (contentBox.width <= 0 || contentBox.height <= 0) {
+        return null;
+      }
     }
 
     // Convert content box to world coordinates
@@ -658,9 +716,28 @@ class DropPreviewBuilder {
     // Clip to content box (INV-6)
     indicatorRect = indicatorRect.intersect(contentWorld);
 
-    // Check if clipping made indicator too small
+    // If indicator too small after clipping, expand to minimum size (centered)
+    // This avoids dead zones for small/tight containers
     final minSize = kMinIndicatorSizePx / zoom;
-    if (indicatorRect.width < minSize || indicatorRect.height < minSize) {
+    if (indicatorRect.width < minSize && axis == Axis.vertical) {
+      indicatorRect = Rect.fromCenter(
+        center: indicatorRect.center,
+        width: minSize,
+        height: indicatorRect.height,
+      );
+    } else if (indicatorRect.height < minSize && axis == Axis.horizontal) {
+      indicatorRect = Rect.fromCenter(
+        center: indicatorRect.center,
+        width: indicatorRect.width,
+        height: minSize,
+      );
+    }
+
+    // Final clip to content bounds after expansion
+    indicatorRect = indicatorRect.intersect(contentWorld);
+
+    // Only return null if both dimensions are truly empty (parent too small)
+    if (indicatorRect.isEmpty) {
       return null;
     }
 

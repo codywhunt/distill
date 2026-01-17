@@ -595,6 +595,8 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
         if (selectedFrameIds.contains(frameTarget.frameId)) {
           // Dragging with nodes selected - start node drag
           widget.state.startDrag();
+          // Fix F: Compute initial preview immediately at drag start
+          _computeNodeDragPreview(worldPos);
           return;
         }
       }
@@ -623,83 +625,22 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
 
     // Update drop preview for move operations using DropPreviewBuilder
     if (session.mode == DragMode.move && session.targets.isNotEmpty) {
-      final nodeTargets = session.targets.whereType<NodeTarget>().toList();
-
-      // Only track drop target for nodes (not frames)
-      if (nodeTargets.isNotEmpty) {
-        // Use locked frame from session (INV-5)
-        final frameId = session.lockedFrameId;
-        if (frameId == null) {
-          // Frame drags don't use drop preview - this shouldn't happen for node targets
-          return;
-        }
-
-        // Build ordered lists (preserve multi-select ordering)
-        final draggedDocIdsOrdered = <String>[];
-        final draggedExpandedIdsOrdered = <String>[];
-        for (final target in nodeTargets) {
-          if (target.patchTarget != null) {
-            draggedDocIdsOrdered.add(target.patchTarget!);
-          }
-          draggedExpandedIdsOrdered.add(target.expandedId);
-        }
-
-        // Get dependencies for the builder
-        final scene = widget.state.getExpandedScene(frameId);
-        final renderDoc = widget.state.getRenderDoc(frameId);
-        final lookups = widget.state.getFrameLookups(frameId);
-
-        if (scene == null || renderDoc == null || lookups == null) {
-          session.dropPreview = DropPreview.none(
-            frameId: frameId,
-            invalidReason: 'Scene/render doc/lookups not available',
-            draggedDocIdsOrdered: draggedDocIdsOrdered,
-            draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
-          );
-        } else {
-          // Compute drop preview using the builder
-          final dropPreview = _dropPreviewBuilder.compute(
-            lockedFrameId: frameId,
-            cursorWorld: details.worldPosition,
-            draggedDocIdsOrdered: draggedDocIdsOrdered,
-            draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
-            originalParents: session.originalParents,
-            lastInsertionIndex: session.lastInsertionIndex,
-            lastInsertionCursor: session.lastInsertionCursor,
-            zoom: _controller.zoom,
-            document: widget.state.document,
-            scene: scene,
-            renderDoc: renderDoc,
-            lookups: lookups,
-            getBounds: widget.state.getNodeBoundsResolved,
-            getFramePos: (fId) =>
-                widget.state.document.frames[fId]?.canvas.position ??
-                Offset.zero,
-            hitTestContainer: (fId, pos, exclude) =>
-                widget.state.hitTestContainer(fId, pos, excludeExpandedIds: exclude),
-            // Origin stickiness - prefer reorder when cursor is inside origin parent
-            originParentExpandedId: session.originParentExpandedId,
-            originParentContentWorldRect: session.originParentContentWorldRect,
-          );
-
-          // Store on session
-          session.dropPreview = dropPreview;
-
-          // Update hysteresis state if index changed
-          if (dropPreview.insertionIndex != session.lastInsertionIndex) {
-            session.lastInsertionIndex = dropPreview.insertionIndex;
-            session.lastInsertionCursor = details.worldPosition;
-          }
-        }
-      }
+      _computeNodeDragPreview(details.worldPosition);
     }
 
     final worldDelta = details.worldDelta;
 
-    // Check for grid snap (Shift key)
-    final gridSize = HardwareKeyboard.instance.isShiftPressed ? 10.0 : null;
-    // Check for smart guides disable (Meta/Cmd key)
-    final useSmartGuides = !HardwareKeyboard.instance.isMetaPressed;
+    // Fix D: Only apply snapping for frame-level moves (not node drags)
+    final hasFrameTargets = session.targets.any((t) => t is FrameTarget);
+
+    // Check for grid snap (Shift key) - only for frames
+    final gridSize =
+        hasFrameTargets && HardwareKeyboard.instance.isShiftPressed
+            ? 10.0
+            : null;
+    // Check for smart guides disable (Meta/Cmd key) - only for frames
+    final useSmartGuides =
+        hasFrameTargets && !HardwareKeyboard.instance.isMetaPressed;
 
     if (session.mode == DragMode.resize) {
       widget.state.updateResize(
@@ -726,6 +667,79 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
       widget.state.endMarquee();
     } else {
       widget.state.endDrag();
+    }
+  }
+
+  /// Computes drop preview for a node drag operation (Fix F: Initial preview at drag start).
+  ///
+  /// This method is called both at drag start (to show reflow immediately) and
+  /// during drag update (to track cursor position changes).
+  void _computeNodeDragPreview(Offset cursorWorld) {
+    final session = widget.state.dragSession;
+    if (session == null || session.mode != DragMode.move) return;
+
+    final nodeTargets = session.targets.whereType<NodeTarget>().toList();
+    if (nodeTargets.isEmpty) return;
+
+    // Use locked frame from session (INV-5)
+    final frameId = session.lockedFrameId;
+    if (frameId == null) return;
+
+    // Build ordered lists (preserve multi-select ordering)
+    final draggedDocIdsOrdered = <String>[];
+    final draggedExpandedIdsOrdered = <String>[];
+    for (final target in nodeTargets) {
+      if (target.patchTarget != null) {
+        draggedDocIdsOrdered.add(target.patchTarget!);
+      }
+      draggedExpandedIdsOrdered.add(target.expandedId);
+    }
+
+    // Get dependencies for the builder
+    final scene = widget.state.getExpandedScene(frameId);
+    final renderDoc = widget.state.getRenderDoc(frameId);
+    final lookups = widget.state.getFrameLookups(frameId);
+
+    if (scene == null || renderDoc == null || lookups == null) {
+      session.dropPreview = DropPreview.none(
+        frameId: frameId,
+        invalidReason: 'Scene/render doc/lookups not available',
+        draggedDocIdsOrdered: draggedDocIdsOrdered,
+        draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
+      );
+    } else {
+      // Compute drop preview using the builder
+      final dropPreview = _dropPreviewBuilder.compute(
+        lockedFrameId: frameId,
+        cursorWorld: cursorWorld,
+        draggedDocIdsOrdered: draggedDocIdsOrdered,
+        draggedExpandedIdsOrdered: draggedExpandedIdsOrdered,
+        originalParents: session.originalParents,
+        lastInsertionIndex: session.lastInsertionIndex,
+        lastInsertionCursor: session.lastInsertionCursor,
+        zoom: _controller.zoom,
+        document: widget.state.document,
+        scene: scene,
+        renderDoc: renderDoc,
+        lookups: lookups,
+        getBounds: widget.state.getNodeBoundsResolved,
+        getFramePos: (fId) =>
+            widget.state.document.frames[fId]?.canvas.position ?? Offset.zero,
+        hitTestContainer: (fId, pos, exclude) =>
+            widget.state.hitTestContainer(fId, pos, excludeExpandedIds: exclude),
+        // Origin stickiness - prefer reorder when cursor is inside origin parent
+        originParentExpandedId: session.originParentExpandedId,
+        originParentContentWorldRect: session.originParentContentWorldRect,
+      );
+
+      // Store on session
+      session.dropPreview = dropPreview;
+
+      // Update hysteresis state if index changed
+      if (dropPreview.insertionIndex != session.lastInsertionIndex) {
+        session.lastInsertionIndex = dropPreview.insertionIndex;
+        session.lastInsertionCursor = cursorWorld;
+      }
     }
   }
 

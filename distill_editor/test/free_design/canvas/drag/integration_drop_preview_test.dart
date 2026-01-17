@@ -631,5 +631,250 @@ void main() {
         expect(preview.invalidReason, contains('parent'));
       });
     });
+
+    group('text node integration (Fix E)', () {
+      test('text node reorder produces valid drop preview', () {
+        // Create harness with text nodes in auto-layout parent
+        var doc = EditorDocument.empty(documentId: 'test_doc');
+
+        doc = doc.withNode(const Node(
+          id: 'text_0',
+          name: 'Text 0',
+          type: NodeType.text,
+          props: TextProps(text: 'Hello World'),
+        ));
+
+        doc = doc.withNode(const Node(
+          id: 'text_1',
+          name: 'Text 1',
+          type: NodeType.text,
+          props: TextProps(text: 'Goodbye World'),
+        ));
+
+        doc = doc.withNode(const Node(
+          id: 'parent',
+          name: 'Parent',
+          type: NodeType.container,
+          props: ContainerProps(),
+          childIds: ['text_0', 'text_1'],
+          layout: NodeLayout(
+            autoLayout: AutoLayout(
+              direction: LayoutDirection.vertical,
+              gap: FixedNumeric(10),
+            ),
+          ),
+        ));
+
+        final now = DateTime.now();
+        doc = doc.withFrame(Frame(
+          id: 'f_test',
+          name: 'Test Frame',
+          rootNodeId: 'parent',
+          canvas: const CanvasPlacement(
+            position: Offset.zero,
+            size: Size(200, 150),
+          ),
+          createdAt: now,
+          updatedAt: now,
+        ));
+
+        final harness = MiniSceneHarness.fromDocument(
+          document: doc,
+          frameId: 'f_test',
+          boundsProvider: (expandedId, node) {
+            return switch (expandedId) {
+              'parent' => const Rect.fromLTWH(0, 0, 200, 150),
+              'text_0' => const Rect.fromLTWH(10, 10, 180, 40),
+              'text_1' => const Rect.fromLTWH(10, 60, 180, 40),
+              _ => null,
+            };
+          },
+        );
+
+        // Set up hit test to return parent
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'parent',
+          docId: 'parent',
+        );
+
+        // Drag text_0 to slot after text_1
+        final cursorWorld = const Offset(100, 110); // Below text_1
+
+        final preview = harness.computePreview(
+          cursorWorld: cursorWorld,
+          draggedExpandedIds: ['text_0'],
+          draggedDocIds: ['text_0'],
+          originalParents: {'text_0': 'parent'},
+          originParentExpandedId: 'parent',
+          originParentContentWorldRect: const Rect.fromLTWH(0, 0, 200, 150),
+        );
+
+        expect(preview.isValid, isTrue);
+        expect(preview.intent, equals(DropIntent.reorder));
+        expect(preview.indicatorWorldRect, isNotNull);
+        expect(preview.targetParentExpandedId, equals('parent'));
+        expect(preview.targetParentDocId, equals('parent'));
+      });
+
+      test('text node with non-patchable docId is handled', () {
+        // Verify that text nodes inside instances (unpatchable) are handled gracefully
+        var doc = EditorDocument.empty(documentId: 'test_doc');
+
+        doc = doc.withNode(const Node(
+          id: 'text_content',
+          name: 'Text Content',
+          type: NodeType.text,
+          props: TextProps(text: 'Component text'),
+        ));
+
+        doc = doc.withNode(const Node(
+          id: 'row_content',
+          name: 'Row Content',
+          type: NodeType.container,
+          props: ContainerProps(),
+          childIds: ['text_content'],
+          layout: NodeLayout(
+            autoLayout: AutoLayout(direction: LayoutDirection.vertical),
+          ),
+        ));
+
+        final now = DateTime.now();
+        doc = doc.withComponent(ComponentDef(
+          id: 'comp_row',
+          name: 'Row Component',
+          rootNodeId: 'row_content',
+          createdAt: now,
+          updatedAt: now,
+        ));
+
+        // Create instance
+        doc = doc.withNode(const Node(
+          id: 'inst_a',
+          name: 'Instance A',
+          type: NodeType.instance,
+          props: InstanceProps(componentId: 'comp_row'),
+        ));
+
+        doc = doc.withNode(const Node(
+          id: 'root',
+          name: 'Root',
+          type: NodeType.container,
+          props: ContainerProps(),
+          childIds: ['inst_a'],
+          layout: NodeLayout(
+            autoLayout: AutoLayout(direction: LayoutDirection.vertical),
+          ),
+        ));
+
+        doc = doc.withFrame(Frame(
+          id: 'f_test',
+          name: 'Test Frame',
+          rootNodeId: 'root',
+          canvas: const CanvasPlacement(
+            position: Offset.zero,
+            size: Size(300, 200),
+          ),
+          createdAt: now,
+          updatedAt: now,
+        ));
+
+        final harness = MiniSceneHarness.fromDocument(
+          document: doc,
+          frameId: 'f_test',
+          boundsProvider: (expandedId, node) {
+            return switch (expandedId) {
+              'root' => const Rect.fromLTWH(0, 0, 300, 200),
+              'inst_a' => const Rect.fromLTWH(10, 10, 280, 100),
+              'inst_a::row_content' => const Rect.fromLTWH(10, 10, 280, 100),
+              'inst_a::text_content' => const Rect.fromLTWH(20, 20, 260, 40),
+              _ => null,
+            };
+          },
+        );
+
+        // Check that the text inside instance has null patchTarget
+        final textDocId = harness.lookups.getDocId('inst_a::text_content');
+        expect(textDocId, isNull); // Instance children are unpatchable
+
+        // The instance itself should be patchable
+        final instanceDocId = harness.lookups.getDocId('inst_a');
+        expect(instanceDocId, equals('inst_a'));
+      });
+    });
+
+    group('initial preview at drag start (Fix F)', () {
+      test('preview computed at origin returns reorder intent', () {
+        // Simulates what happens when drag starts - cursor is at origin position
+        final harness = MiniSceneHarness.verticalStack(childCount: 3);
+
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'root',
+          docId: 'root',
+        );
+
+        // Cursor at child_0's center (drag start position)
+        final cursorWorld = const Offset(50, 25); // Center of first child
+
+        final preview = harness.computePreview(
+          cursorWorld: cursorWorld,
+          draggedExpandedIds: ['child_0'],
+          draggedDocIds: ['child_0'],
+          originalParents: {'child_0': 'root'},
+          originParentExpandedId: 'root',
+          originParentContentWorldRect: const Rect.fromLTWH(0, 0, 100, 170),
+        );
+
+        // At drag start, should immediately compute reorder preview
+        expect(preview.isValid, isTrue);
+        expect(preview.intent, equals(DropIntent.reorder));
+        expect(preview.targetParentExpandedId, equals('root'));
+      });
+
+      test('initial preview has non-null indicator', () {
+        final harness = MiniSceneHarness.verticalStack(childCount: 3);
+
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'root',
+          docId: 'root',
+        );
+
+        final cursorWorld = const Offset(50, 25);
+
+        final preview = harness.computePreview(
+          cursorWorld: cursorWorld,
+          draggedExpandedIds: ['child_0'],
+          draggedDocIds: ['child_0'],
+          originalParents: {'child_0': 'root'},
+          originParentExpandedId: 'root',
+          originParentContentWorldRect: const Rect.fromLTWH(0, 0, 100, 170),
+        );
+
+        // Indicator should be computed immediately
+        expect(preview.indicatorWorldRect, isNotNull);
+      });
+
+      test('initial preview has reflow for siblings', () {
+        final harness = MiniSceneHarness.verticalStack(childCount: 3);
+
+        harness.hitResultOverride = const ContainerHit(
+          expandedId: 'root',
+          docId: 'root',
+        );
+
+        final cursorWorld = const Offset(50, 25);
+
+        final preview = harness.computePreview(
+          cursorWorld: cursorWorld,
+          draggedExpandedIds: ['child_0'],
+          draggedDocIds: ['child_0'],
+          originalParents: {'child_0': 'root'},
+          originParentExpandedId: 'root',
+          originParentContentWorldRect: const Rect.fromLTWH(0, 0, 100, 170),
+        );
+
+        // Reflow should show sibling positions
+        expect(preview.reflowOffsetsByExpandedId, isNotEmpty);
+      });
+    });
   });
 }
