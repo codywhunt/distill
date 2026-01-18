@@ -138,7 +138,10 @@ class _ExamplePageState extends State<ExamplePage> {
           ),
         ),
         HoloIconButton(
-          icon: widget.isDarkMode ? LucideIcons.sun : LucideIcons.moon,
+          icon:
+              widget.isDarkMode
+                  ? HoloIconData.icon(LucideIcons.sun)
+                  : HoloIconData.icon(LucideIcons.moon),
           onPressed: widget.onToggleTheme,
           tooltip:
               widget.isDarkMode
@@ -223,7 +226,7 @@ class _ExamplePageState extends State<ExamplePage> {
         ),
         HoloButton(
           label: 'With Icon',
-          icon: LucideIcons.plus,
+          icon: HoloIconData.icon(LucideIcons.plus),
           style: HoloButtonStyle.primary(context),
           onPressed: () {},
         ),
@@ -237,17 +240,17 @@ class _ExamplePageState extends State<ExamplePage> {
       runSpacing: context.spacing.sm,
       children: [
         HoloIconButton(
-          icon: LucideIcons.plus,
+          icon: HoloIconData.icon(LucideIcons.plus),
           onPressed: () {},
           tooltip: 'Add',
         ),
         HoloIconButton(
-          icon: LucideIcons.pencil,
+          icon: HoloIconData.icon(LucideIcons.pencil),
           onPressed: () {},
           tooltip: 'Edit',
         ),
         HoloIconButton(
-          icon: LucideIcons.trash2,
+          icon: HoloIconData.icon(LucideIcons.trash2),
           style: HoloButtonStyle.ghost(context).copyWith(
             foregroundColor: context.colors.accent.red.primary.states(
               hovered: context.colors.accent.red.primary.withValues(alpha: 0.8),
@@ -257,12 +260,12 @@ class _ExamplePageState extends State<ExamplePage> {
           tooltip: 'Delete',
         ),
         HoloIconButton(
-          icon: LucideIcons.settings,
+          icon: HoloIconData.icon(LucideIcons.settings),
           onPressed: () {},
           tooltip: 'Settings',
         ),
         HoloIconButton(
-          icon: LucideIcons.x,
+          icon: HoloIconData.icon(LucideIcons.x),
           isDisabled: true,
           onPressed: () {},
           tooltip: 'Disabled',
@@ -278,21 +281,21 @@ class _ExamplePageState extends State<ExamplePage> {
       children: [
         HoloButton(
           label: 'Green Custom',
-          icon: LucideIcons.check200,
+          icon: HoloIconData.icon(LucideIcons.check200),
           backgroundColor: context.colors.accent.green.primary,
           foregroundColor: Colors.white,
           onPressed: () {},
         ),
         HoloButton(
           label: 'Orange Custom',
-          icon: LucideIcons.triangleAlert200,
+          icon: HoloIconData.icon(LucideIcons.triangleAlert200),
           backgroundColor: context.colors.accent.orange.primary,
           foregroundColor: Colors.white,
           onPressed: () {},
         ),
         HoloButton(
           label: 'Pink Custom',
-          icon: LucideIcons.heart200,
+          icon: HoloIconData.icon(LucideIcons.heart200),
           backgroundColor: context.colors.accent.pink.primary,
           foregroundColor: Colors.white,
           onPressed: () {},

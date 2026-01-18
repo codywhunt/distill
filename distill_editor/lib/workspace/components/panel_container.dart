@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:distill_ds/design_system.dart';
 
@@ -33,10 +35,10 @@ class PanelContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     final border = switch (borderSide) {
       PanelBorderSide.left => Border(
-        left: BorderSide(color: context.colors.overlay.overlay10, width: 1),
+        left: BorderSide(color: context.colors.overlay.overlay05, width: 1),
       ),
       PanelBorderSide.right => Border(
-        right: BorderSide(color: context.colors.overlay.overlay10, width: 1),
+        right: BorderSide(color: context.colors.overlay.overlay05, width: 1),
       ),
       PanelBorderSide.none => const Border(),
     };
@@ -48,10 +50,7 @@ class PanelContainer extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (header != null) header!,
-          Expanded(child: child),
-        ],
+        children: [if (header != null) header!, Expanded(child: child)],
       ),
     );
   }
@@ -62,7 +61,10 @@ enum PanelSide { left, right }
 
 /// Standard panel header with title and optional search/toggle actions.
 /// Named ModulePanelHeader to avoid conflict with design system's PanelHeader.
-class ModulePanelHeader extends StatelessWidget {
+///
+/// On macOS with full-size content view, the left panel header automatically
+/// accounts for the traffic light buttons (close, minimize, zoom).
+class ModulePanelHeader extends StatefulWidget {
   const ModulePanelHeader({
     super.key,
     required this.title,
@@ -84,12 +86,31 @@ class ModulePanelHeader extends StatelessWidget {
   final PanelSide panelSide;
 
   @override
+  State<ModulePanelHeader> createState() => _ModulePanelHeaderState();
+}
+
+class _ModulePanelHeaderState extends State<ModulePanelHeader> {
+  @override
   Widget build(BuildContext context) {
     // Toggle icon points toward the edge to indicate collapse direction
-    final toggleIcon = panelSide == PanelSide.left
-        ? LucideIcons.panelLeft200
-        : LucideIcons.panelRight200;
+    final toggleIcon =
+        widget.panelSide == PanelSide.left
+            ? LucideIcons.panelLeft200
+            : LucideIcons.panelRight200;
 
+    // On macOS, left panel has a special layout with traffic lights
+    final isLeftPanelOnMacOS =
+        Platform.isMacOS && widget.panelSide == PanelSide.left;
+
+    if (isLeftPanelOnMacOS) {
+      return _buildMacOSLeftPanelHeader(context, toggleIcon);
+    }
+
+    return _buildStandardHeader(context, toggleIcon);
+  }
+
+  /// Builds the standard header layout (non-macOS or right panel).
+  Widget _buildStandardHeader(BuildContext context, IconData toggleIcon) {
     return Container(
       height: 46,
       padding: EdgeInsets.only(
@@ -98,33 +119,84 @@ class ModulePanelHeader extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: context.colors.overlay.overlay10, width: 1),
+          bottom: BorderSide(color: context.colors.overlay.overlay05, width: 1),
         ),
       ),
       child: Row(
         children: [
           Text(
-            title,
+            widget.title,
             style: context.typography.body.mediumStrong.copyWith(
               color: context.colors.foreground.primary,
             ),
           ),
           const Spacer(),
-          if (onSearch != null)
+          if (widget.onSearch != null)
             HoloIconButton(
-              icon: LucideIcons.search200,
-              onPressed: onSearch,
+              icon: HoloIconData.icon(LucideIcons.search200),
+              onPressed: widget.onSearch,
               size: 28,
               iconSize: 14,
             ),
-          if (onToggle != null) ...[
+          if (widget.onToggle != null)
             HoloIconButton(
-              icon: toggleIcon,
-              onPressed: onToggle,
+              icon: HoloIconData.icon(toggleIcon),
+              onPressed: widget.onToggle,
               size: 28,
-              iconSize: 14,
+              iconSize: 16,
             ),
-          ],
+        ],
+      ),
+    );
+  }
+
+  /// Builds macOS left panel header with spacing for traffic lights/toolbar.
+  ///
+  /// The toggle button is handled by [MacOSTrafficLightToggle] which is
+  /// always visible, so this header just needs the title row with proper
+  /// top spacing for the toolbar area.
+  Widget _buildMacOSLeftPanelHeader(BuildContext context, IconData toggleIcon) {
+    // Toolbar height on macOS (where traffic lights and toggle live)
+    const toolbarHeight = 46.0;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: context.colors.overlay.overlay05, width: 1),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Spacer for toolbar area (traffic lights + toggle button)
+          const SizedBox(height: toolbarHeight),
+          // Title row
+          Container(
+            height: 46,
+            padding: EdgeInsets.only(
+              left: context.spacing.lg,
+              right: context.spacing.xs,
+            ),
+            child: Row(
+              children: [
+                Text(
+                  widget.title,
+                  style: context.typography.body.mediumStrong.copyWith(
+                    color: context.colors.foreground.muted,
+                  ),
+                ),
+                const Spacer(),
+                if (widget.onSearch != null)
+                  HoloIconButton(
+                    icon: HoloIconData.icon(LucideIcons.search200),
+                    onPressed: widget.onSearch,
+                    size: 28,
+                    iconSize: 14,
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -152,14 +224,15 @@ class HiddenPanelToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Icon points outward to indicate expand direction
-    final icon = panelSide == PanelSide.left
-        ? LucideIcons.panelLeft200
-        : LucideIcons.panelRight200;
+    final icon =
+        panelSide == PanelSide.left
+            ? HoloIconData.huge(HugeIconsStrokeRounded.sidebarLeft)
+            : HoloIconData.huge(HugeIconsStrokeRounded.sidebarRight);
 
     return HoloIconButton(
       icon: icon,
       onPressed: onTap,
-      size: 28,
+      size: 34,
       iconSize: 16,
       tooltip: tooltip,
       style: HoloButtonStyle.ghost(context),

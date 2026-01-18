@@ -49,7 +49,7 @@ class _CanvasLeftPanelState extends State<CanvasLeftPanel> {
 
     return PanelContainer(
       header: ModulePanelHeader(
-        title: 'Layers',
+        title: 'Canvas',
         panelSide: PanelSide.left,
         onToggle: () => layout.toggleLeftPanel(ModuleType.canvas),
       ),

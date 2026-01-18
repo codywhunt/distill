@@ -96,7 +96,7 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
             onPointerDown: _handlePointerDown,
             child: InfiniteCanvas(
               controller: _controller,
-              backgroundColor: context.colors.background.secondary,
+              backgroundColor: context.colors.background.primary,
               // Fit all frames with padding on initial load
               initialViewport: InitialViewport.fitContent(
                 _getAllFramesBounds,
@@ -110,7 +110,7 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
               ),
               momentumConfig: CanvasMomentumConfig.figmaLike,
               layers: CanvasLayers(
-                background: _buildBackground,
+                // background: _buildBackground,
                 content: _buildContent,
                 overlay: _buildOverlay,
               ),
@@ -143,15 +143,15 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
     return bounds ?? const Rect.fromLTWH(-500, -500, 1000, 1000);
   }
 
-  Widget _buildBackground(BuildContext context, InfiniteCanvasController ctrl) {
-    return DotBackground(
-      controller: ctrl,
-      spacing: 20.0,
-      dotRadius: 1.0,
-      color: context.colors.overlay.overlay10,
-      minPixelSpacing: 12,
-    );
-  }
+  // Widget _buildBackground(BuildContext context, InfiniteCanvasController ctrl) {
+  //   return DotBackground(
+  //     controller: ctrl,
+  //     spacing: 20.0,
+  //     dotRadius: 1.0,
+  //     color: context.colors.overlay.overlay05,
+  //     minPixelSpacing: 12,
+  //   );
+  // }
 
   Widget _buildContent(BuildContext context, InfiniteCanvasController ctrl) {
     // Cull frames outside viewport
@@ -593,7 +593,11 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
 
     // Translate root nodes that are positioned
     if (pasteOffset != Offset.zero) {
-      remappedNodes = _translateRoots(remappedNodes, remappedRootIds, pasteOffset);
+      remappedNodes = _translateRoots(
+        remappedNodes,
+        remappedRootIds,
+        pasteOffset,
+      );
     }
 
     // Execute paste
@@ -670,11 +674,7 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
     // Select all pasted root nodes
     for (final nodeId in nodeIds) {
       widget.state.select(
-        NodeTarget(
-          frameId: frameId,
-          expandedId: nodeId,
-          patchTarget: nodeId,
-        ),
+        NodeTarget(frameId: frameId, expandedId: nodeId, patchTarget: nodeId),
         addToSelection: true,
       );
     }
@@ -1017,10 +1017,16 @@ class _FreeDesignCanvasState extends State<FreeDesignCanvas> {
         renderDoc: renderDoc,
         lookups: lookups,
         getBounds: widget.state.getNodeBoundsResolved,
-        getFramePos: (fId) =>
-            widget.state.document.frames[fId]?.canvas.position ?? Offset.zero,
-        hitTestContainer: (fId, pos, exclude) =>
-            widget.state.hitTestContainer(fId, pos, excludeExpandedIds: exclude),
+        getFramePos:
+            (fId) =>
+                widget.state.document.frames[fId]?.canvas.position ??
+                Offset.zero,
+        hitTestContainer:
+            (fId, pos, exclude) => widget.state.hitTestContainer(
+              fId,
+              pos,
+              excludeExpandedIds: exclude,
+            ),
         // Origin stickiness - prefer reorder when cursor is inside origin parent
         originParentExpandedId: session.originParentExpandedId,
         originParentContentWorldRect: session.originParentContentWorldRect,

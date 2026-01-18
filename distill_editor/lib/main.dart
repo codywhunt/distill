@@ -1,5 +1,8 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:distill_ds/design_system.dart';
+import 'package:macos_window_utils/macos_window_utils.dart';
 
 import 'routing/router.dart';
 
@@ -9,6 +12,20 @@ import 'routing/router.dart';
 /// See lib/workspace/shell_contract.md for the design contract.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize macOS window customization
+  if (Platform.isMacOS) {
+    await WindowManipulator.initialize(enableWindowDelegate: true);
+
+    // Modern transparent title bar with full-size content
+    WindowManipulator.makeTitlebarTransparent();
+    WindowManipulator.enableFullSizeContentView();
+    WindowManipulator.hideTitle();
+    WindowManipulator.addToolbar();
+    WindowManipulator.setToolbarStyle(
+      toolbarStyle: NSWindowToolbarStyle.unified,
+    );
+  }
 
   // Precache critical assets to avoid flash on load
   await _precacheAssets();

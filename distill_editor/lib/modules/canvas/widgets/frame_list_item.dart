@@ -109,9 +109,12 @@ class _FrameListItemState extends State<FrameListItem> {
           margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
           height: 26,
           decoration: BoxDecoration(
-            color: effectiveSelected
-                ? context.colors.accent.purple.primary
-                : (effectiveHovered ? context.colors.overlay.overlay05 : null),
+            color:
+                effectiveSelected
+                    ? context.colors.accent.teal.primary
+                    : (effectiveHovered
+                        ? context.colors.overlay.overlay05
+                        : null),
             borderRadius: BorderRadius.circular(context.radius.sm),
           ),
           child: Padding(
@@ -119,12 +122,13 @@ class _FrameListItemState extends State<FrameListItem> {
             child: Row(
               children: [
                 // Frame icon
-                Icon(
-                  LucideIcons.frame200,
+                HoloIcon(
+                  HoloIconData.huge(HugeIconsStrokeRounded.smartPhone01),
                   size: 13,
-                  color: effectiveSelected
-                      ? Colors.white
-                      : effectiveHovered
+                  color:
+                      effectiveSelected
+                          ? Colors.white
+                          : effectiveHovered
                           ? context.colors.foreground.primary
                           : context.colors.foreground.muted,
                 ),
@@ -133,9 +137,14 @@ class _FrameListItemState extends State<FrameListItem> {
 
                 // Name (double-click to edit)
                 Expanded(
-                  child: _isEditing
-                      ? _buildEditField(context, effectiveSelected)
-                      : _buildNameText(context, effectiveSelected, effectiveHovered),
+                  child:
+                      _isEditing
+                          ? _buildEditField(context, effectiveSelected)
+                          : _buildNameText(
+                            context,
+                            effectiveSelected,
+                            effectiveHovered,
+                          ),
                 ),
 
                 // Delete button (visible when selected or hovered)
@@ -147,9 +156,10 @@ class _FrameListItemState extends State<FrameListItem> {
                       child: Icon(
                         LucideIcons.trash2200,
                         size: 13,
-                        color: effectiveSelected
-                            ? Colors.white.withValues(alpha: 0.7)
-                            : context.colors.foreground.muted,
+                        color:
+                            effectiveSelected
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : context.colors.foreground.muted,
                       ),
                     ),
                   ),
@@ -167,9 +177,10 @@ class _FrameListItemState extends State<FrameListItem> {
       child: Text(
         widget.frame.name,
         style: context.typography.body.medium.copyWith(
-          color: isSelected
-              ? Colors.white
-              : isHovered
+          color:
+              isSelected
+                  ? Colors.white
+                  : isHovered
                   ? context.colors.foreground.primary
                   : context.colors.foreground.muted,
         ),

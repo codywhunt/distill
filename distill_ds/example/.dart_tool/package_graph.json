@@ -21,6 +21,7 @@
       "dependencies": [
         "flutter",
         "flutter_svg",
+        "hugeicons",
         "lucide_icons_flutter"
       ]
     },
@@ -59,6 +60,14 @@
         "meta",
         "sky_engine",
         "vector_math"
+      ]
+    },
+    {
+      "name": "hugeicons",
+      "version": "1.1.5",
+      "dependencies": [
+        "flutter",
+        "flutter_svg"
       ]
     },
     {

@@ -75,6 +75,7 @@ class HoloAccentColors {
   final HoloAccentColorSet green;
   final HoloAccentColorSet red;
   final HoloAccentColorSet pink;
+  final HoloAccentColorSet teal;
 
   const HoloAccentColors({
     required this.purple,
@@ -82,6 +83,7 @@ class HoloAccentColors {
     required this.green,
     required this.red,
     required this.pink,
+    required this.teal,
   });
 }
 
@@ -184,6 +186,7 @@ class HoloColors extends ThemeExtension<HoloColors> {
         green: _lerpAccent(accent.green, other.accent.green, t),
         red: _lerpAccent(accent.red, other.accent.red, t),
         pink: _lerpAccent(accent.pink, other.accent.pink, t),
+        teal: _lerpAccent(accent.teal, other.accent.teal, t),
       ),
       diff: HoloDiffColors(
         addition: Color.lerp(diff.addition, other.diff.addition, t)!,
@@ -213,7 +216,7 @@ class HoloColors extends ThemeExtension<HoloColors> {
 final holoColorsLight = HoloColors(
   background: HoloBackgroundColors(
     primary: const Color(0xFFFCFCFC),
-    secondary: const Color.fromARGB(255, 243, 243, 243),
+    secondary: const Color(0xFFF5F5F5),
     alternate: const Color(0xFFFDFDFD),
     fullContrast: const Color(0xFFFFFFFF),
     tooltip: const Color(0xFF575757).withAlpha(242),
@@ -260,6 +263,11 @@ final holoColorsLight = HoloColors(
       overlay: const Color(0xFFD46CB3).withAlpha(26),
       stroke: const Color(0xFFD46CB3).withAlpha(64),
     ),
+    teal: HoloAccentColorSet(
+      primary: const Color(0xFF22808D),
+      overlay: const Color(0xFF22808D).withAlpha(26),
+      stroke: const Color(0xFF22808D).withAlpha(64),
+    ),
   ),
   diff: HoloDiffColors(
     addition: const Color(0xFFB9D2C9).withAlpha(130),
@@ -274,8 +282,8 @@ final holoColorsLight = HoloColors(
 
 final holoColorsDark = HoloColors(
   background: HoloBackgroundColors(
-    primary: const Color(0xFF101114),
-    secondary: const Color.fromARGB(255, 21, 21, 26),
+    primary: const Color(0xFF181818),
+    secondary: const Color(0xFF121212),
     alternate: const Color(0xFF1C1F24),
     fullContrast: const Color.fromARGB(255, 13, 13, 13),
     tooltip: const Color(0xFFF0F0F0).withAlpha(242),
@@ -321,6 +329,11 @@ final holoColorsDark = HoloColors(
       primary: const Color(0xFFD18BBA),
       overlay: const Color(0xFFD18BBA).withAlpha(26),
       stroke: const Color(0xFFD18BBA).withAlpha(64),
+    ),
+    teal: HoloAccentColorSet(
+      primary: const Color(0xFF22808D),
+      overlay: const Color(0xFF22808D).withAlpha(26),
+      stroke: const Color(0xFF22808D).withAlpha(64),
     ),
   ),
   diff: HoloDiffColors(

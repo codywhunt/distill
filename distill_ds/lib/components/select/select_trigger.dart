@@ -92,22 +92,24 @@ class HoloSelectTrigger extends StatelessWidget {
         } else {
           bgColor = colors.background.primary;
           borderColor = colors.overlay.overlay10;
-          fgColor = isPlaceholder
-              ? colors.foreground.muted
-              : colors.foreground.primary;
+          fgColor =
+              isPlaceholder
+                  ? colors.foreground.muted
+                  : colors.foreground.primary;
         }
 
         return Container(
           width: width,
-          height: 28,
-          padding: const EdgeInsets.only(left: 10, right: 6),
+          height: 34,
+          padding: const EdgeInsets.only(left: 14, right: 6),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(context.radius.sm),
+            borderRadius: BorderRadius.circular(context.radius.full),
             border: Border.all(color: borderColor, width: 0.8),
           ),
           child: Row(
-            mainAxisSize: (width != null || expand) ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisSize:
+                (width != null || expand) ? MainAxisSize.max : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Leading icon

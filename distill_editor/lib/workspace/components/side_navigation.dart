@@ -34,7 +34,7 @@ class SideNavigation extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.background.primary,
         border: Border(
-          right: BorderSide(color: context.colors.overlay.overlay10, width: 1),
+          right: BorderSide(color: context.colors.overlay.overlay05, width: 1),
         ),
       ),
       child: Column(

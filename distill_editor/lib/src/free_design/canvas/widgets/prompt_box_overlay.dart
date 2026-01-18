@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:math' show min;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
@@ -349,11 +350,18 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
             // - Focused: fullContrast
             // - Hovered: primary
             // - Default: secondary
-            final backgroundColor = _focusNode.hasFocus
-                ? context.colors.background.fullContrast
-                : _isHovered
-                ? context.colors.background.primary
-                : context.colors.background.secondary;
+            final backgroundColor =
+                _focusNode.hasFocus
+                    ? context.colors.background.fullContrast.withValues(
+                      alpha: 0.95,
+                    )
+                    : _isHovered
+                    ? context.colors.background.fullContrast.withValues(
+                      alpha: 0.9,
+                    )
+                    : context.colors.background.secondary.withValues(
+                      alpha: 0.85,
+                    );
 
             return Align(
               alignment: Alignment.bottomCenter,
@@ -362,38 +370,46 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
                 child: MouseRegion(
                   onEnter: (_) => setState(() => _isHovered = true),
                   onExit: (_) => setState(() => _isHovered = false),
-                  child: Container(
-                    width: maxWidth,
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(context.radius.xl),
-                      border: Border.all(
-                        color: context.colors.overlay.overlay10,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(context.radius.xxl),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      child: Container(
+                        width: maxWidth,
+                        decoration: BoxDecoration(
+                          color: backgroundColor,
+                          borderRadius: BorderRadius.circular(
+                            context.radius.xxl,
+                          ),
+                          border: Border.all(
+                            color: context.colors.overlay.overlay10,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _InputArea(
+                              state: widget.state,
+                              textController: _textController,
+                              focusNode: _focusNode,
+                              onSubmit: _handleSubmit,
+                            ),
+                            _ActionRow(
+                              state: widget.state,
+                              currentModel: _selectedModel,
+                              onModelChanged: (model) {
+                                if (model != null) {
+                                  setState(() => _selectedModel = model);
+                                }
+                              },
+                              onSubmit: _handleSubmit,
+                              // Can always submit if there's text - concurrent generations allowed
+                              canSubmit: _textController.text.trim().isNotEmpty,
+                              activeGenerations: _activeGenerations,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _InputArea(
-                          state: widget.state,
-                          textController: _textController,
-                          focusNode: _focusNode,
-                          onSubmit: _handleSubmit,
-                        ),
-                        _ActionRow(
-                          state: widget.state,
-                          currentModel: _selectedModel,
-                          onModelChanged: (model) {
-                            if (model != null) {
-                              setState(() => _selectedModel = model);
-                            }
-                          },
-                          onSubmit: _handleSubmit,
-                          // Can always submit if there's text - concurrent generations allowed
-                          canSubmit: _textController.text.trim().isNotEmpty,
-                          activeGenerations: _activeGenerations,
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -610,17 +626,19 @@ class _ContextChip extends StatelessWidget {
           Icon(
             icon,
             size: 12,
-            color: isMuted
-                ? context.colors.foreground.muted
-                : context.colors.foreground.primary,
+            color:
+                isMuted
+                    ? context.colors.foreground.muted
+                    : context.colors.foreground.primary,
           ),
           SizedBox(width: context.spacing.xxs),
           Text(
             label,
             style: context.typography.body.small.copyWith(
-              color: isMuted
-                  ? context.colors.foreground.muted
-                  : context.colors.foreground.primary,
+              color:
+                  isMuted
+                      ? context.colors.foreground.muted
+                      : context.colors.foreground.primary,
             ),
           ),
         ],
@@ -761,7 +779,7 @@ class _ActionRow extends StatelessWidget {
         children: [
           // + button (stubbed)
           HoloIconButton(
-            icon: LucideIcons.plus200,
+            icon: HoloIconData.icon(LucideIcons.plus200),
             onPressed: () {}, // Stub
             size: 28,
             iconSize: 14,
@@ -771,7 +789,7 @@ class _ActionRow extends StatelessWidget {
 
           // @ button (stubbed)
           HoloIconButton(
-            icon: LucideIcons.atSign200,
+            icon: HoloIconData.icon(LucideIcons.atSign200),
             onPressed: () {}, // Stub
             size: 28,
             iconSize: 14,
@@ -781,7 +799,7 @@ class _ActionRow extends StatelessWidget {
 
           // Debug button - show JSON/DSL for selection
           HoloIconButton(
-            icon: LucideIcons.code200,
+            icon: HoloIconData.icon(LucideIcons.code200),
             onPressed: () => _showDebugDialog(context),
             size: 28,
             iconSize: 14,
@@ -831,7 +849,7 @@ class _ActionRow extends StatelessWidget {
 
           // Submit button - always enabled when there's text
           HoloIconButton(
-            icon: LucideIcons.arrowUp200,
+            icon: HoloIconData.icon(LucideIcons.arrowUp200),
             onPressed: canSubmit ? onSubmit : null,
             style: HoloButtonStyle.primary(context),
             size: 28,
@@ -911,17 +929,19 @@ class _ModelSelector extends StatelessWidget {
     final availableModels = LlmModel.all;
 
     // Graceful degradation if current model not in list
-    final effectiveModel = availableModels.contains(currentModel)
-        ? currentModel
-        : LlmModel.geminiFlash;
+    final effectiveModel =
+        availableModels.contains(currentModel)
+            ? currentModel
+            : LlmModel.geminiFlash;
 
     return HoloSelect<LlmModel>(
       value: effectiveModel,
       onChanged: onChanged,
       expand: true,
-      items: availableModels
-          .map((m) => HoloSelectItem(value: m, label: m.displayName))
-          .toList(),
+      items:
+          availableModels
+              .map((m) => HoloSelectItem(value: m, label: m.displayName))
+              .toList(),
       triggerWidth: 160,
     );
   }

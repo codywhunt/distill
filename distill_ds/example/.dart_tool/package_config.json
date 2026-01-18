@@ -86,6 +86,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "hugeicons",
+      "rootUri": "file:///Users/codyhunt/.pub-cache/hosted/onepub.dev%2547api%2547kdpxxpsdav%2547/hugeicons-1.1.5",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
+    },
+    {
       "name": "leak_tracker",
       "rootUri": "file:///Users/codyhunt/.pub-cache/hosted/pub.dev/leak_tracker-11.0.2",
       "packageUri": "lib/",

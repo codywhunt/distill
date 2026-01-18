@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:distill_canvas/infinite_canvas.dart';
 import 'package:flutter/material.dart';
 import 'package:distill_ds/design_system.dart';
@@ -30,20 +32,21 @@ class CenterTopBar extends StatelessWidget {
     final currentModule = context.select((WorkspaceState s) => s.currentModule);
 
     return Selector<WorkspaceLayoutState, _PanelVisibility>(
-      selector: (_, layout) => _PanelVisibility(
-        leftHidden:
-            layout.hasLeftPanel(currentModule) &&
-            !layout.isLeftPanelVisible(currentModule),
-        rightHidden:
-            layout.hasRightPanel(currentModule) &&
-            !layout.isRightPanelVisible(currentModule),
-      ),
+      selector:
+          (_, layout) => _PanelVisibility(
+            leftHidden:
+                layout.hasLeftPanel(currentModule) &&
+                !layout.isLeftPanelVisible(currentModule),
+            rightHidden:
+                layout.hasRightPanel(currentModule) &&
+                !layout.isRightPanelVisible(currentModule),
+          ),
       builder: (context, visibility, _) {
         final layout = context.read<WorkspaceLayoutState>();
         final spacing = context.spacing;
 
         return Padding(
-          padding: EdgeInsets.all(spacing.md),
+          padding: EdgeInsets.all(spacing.lg),
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -55,8 +58,9 @@ class CenterTopBar extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Panel toggle (when hidden)
-                    if (visibility.leftHidden) ...[
+                    // Panel toggle (when hidden) - only on non-macOS
+                    // On macOS, the toggle is always visible next to traffic lights
+                    if (visibility.leftHidden && !Platform.isMacOS) ...[
                       HiddenPanelToggle(
                         panelSide: PanelSide.left,
                         onTap: () => layout.toggleLeftPanel(currentModule),
@@ -160,15 +164,12 @@ class _SearchBarBreadcrumb extends StatelessWidget {
         );
 
         return Container(
-          height: 30,
+          height: 34,
           constraints: const BoxConstraints(maxWidth: 450),
-          padding: EdgeInsets.only(
-            left: context.spacing.md,
-            right: context.spacing.sm,
-          ),
+          padding: EdgeInsets.only(left: 14, right: context.spacing.md),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(context.radius.sm),
+            borderRadius: BorderRadius.circular(context.radius.full),
             border: Border.all(
               color: context.colors.overlay.overlay10,
               width: 1,
@@ -188,9 +189,9 @@ class _SearchBarBreadcrumb extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.spacing.md),
-              Icon(
-                LucideIcons.search,
-                size: 14,
+              HoloIcon(
+                HoloIconData.huge(HugeIconsStrokeRounded.search01),
+                size: 16,
                 color: context.colors.foreground.disabled,
               ),
             ],

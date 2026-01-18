@@ -12,6 +12,9 @@ dependencies:
     sdk: flutter
   lucide_icons_flutter: ^3.1.9
   flutter_svg: ^2.0.16
+  hugeicons:
+    hosted: https://onepub.dev/api/kdpxxpsdav/
+    version: ^1.1.5
 
 dev_dependencies:
   flutter_test:

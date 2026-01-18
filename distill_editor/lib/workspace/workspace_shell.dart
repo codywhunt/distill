@@ -1,12 +1,15 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'workspace_state.dart';
 import 'workspace_layout_state.dart';
-import 'components/side_navigation.dart';
+// import 'components/side_navigation.dart';
 import 'components/breadcrumb_bar.dart';
 import 'components/resizable_panel.dart';
 import 'components/animated_panel_wrapper.dart';
+import 'components/macos_traffic_light_toggle.dart';
 import '../commands/command_palette_overlay.dart';
 import '../modules/module_registry.dart';
 
@@ -42,16 +45,12 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
   Widget build(BuildContext context) {
     // Wait for layout state to be restored from storage before rendering.
     // This prevents a flash of default panel visibility on page load.
-    final isRestored = context.select(
-      (WorkspaceLayoutState s) => s.isRestored,
-    );
+    final isRestored = context.select((WorkspaceLayoutState s) => s.isRestored);
     if (!isRestored) {
       return const SizedBox.shrink();
     }
 
-    final currentModule = context.select(
-      (WorkspaceState s) => s.currentModule,
-    );
+    final currentModule = context.select((WorkspaceState s) => s.currentModule);
 
     // Mark current module as initialized
     _initializedModules.add(currentModule);
@@ -62,7 +61,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
         Row(
           children: [
             // Side navigation (always visible)
-            const SideNavigation(),
+            // const SideNavigation(),
 
             // Left panel with optimized resize + animation
             _buildLeftPanel(context, currentModule),
@@ -93,6 +92,9 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
             _buildRightPanel(context, currentModule),
           ],
         ),
+
+        // macOS traffic light toggle (always visible, positioned next to traffic lights)
+        if (Platform.isMacOS) const MacOSTrafficLightToggle(),
 
         // Overlay stack (command palette, dialogs)
         const CommandPaletteOverlay(),

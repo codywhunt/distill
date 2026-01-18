@@ -9,6 +9,7 @@
       "dependencies": [
         "flutter",
         "flutter_svg",
+        "hugeicons",
         "lucide_icons_flutter"
       ],
       "devDependencies": [
@@ -39,6 +40,14 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "hugeicons",
+      "version": "1.1.5",
+      "dependencies": [
+        "flutter",
+        "flutter_svg"
       ]
     },
     {

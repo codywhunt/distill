@@ -91,9 +91,12 @@ class NodeTreeItem extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
           height: 26,
           decoration: BoxDecoration(
-            color: effectiveSelected
-                ? context.colors.accent.purple.primary
-                : (effectiveHovered ? context.colors.overlay.overlay05 : null),
+            color:
+                effectiveSelected
+                    ? context.colors.accent.teal.primary
+                    : (effectiveHovered
+                        ? context.colors.overlay.overlay05
+                        : null),
             borderRadius: BorderRadius.circular(context.radius.sm),
           ),
           child: Padding(
@@ -106,15 +109,16 @@ class NodeTreeItem extends StatelessWidget {
                     onTap: onToggleExpand,
                     child: AnimatedRotation(
                       turns: isExpanded! ? 0.25 : 0, // 90° when expanded
-                      duration: const Duration(milliseconds: 200),
+                      duration: context.motion.fast,
                       child: Icon(
                         LucideIcons.chevronRight200,
                         size: 12,
-                        color: effectiveSelected
-                            ? context.colors.foreground.disabled
-                            : effectiveHovered
-                            ? context.colors.foreground.muted
-                            : context.colors.foreground.weak,
+                        color:
+                            effectiveSelected
+                                ? const Color.fromARGB(207, 255, 255, 255)
+                                : effectiveHovered
+                                ? context.colors.foreground.muted
+                                : context.colors.foreground.weak,
                       ),
                     ),
                   )
@@ -124,14 +128,15 @@ class NodeTreeItem extends StatelessWidget {
                 const SizedBox(width: 8),
 
                 // Node type icon
-                Icon(
+                HoloIcon(
                   getNodeTypeIcon(expandedNode),
                   size: 13,
-                  color: effectiveSelected
-                      ? Colors.white
-                      : effectiveHovered
-                      ? context.colors.foreground.primary
-                      : context.colors.foreground.muted,
+                  color:
+                      effectiveSelected
+                          ? Colors.white
+                          : effectiveHovered
+                          ? context.colors.foreground.primary
+                          : context.colors.foreground.muted,
                 ),
 
                 const SizedBox(width: 6),
@@ -141,11 +146,12 @@ class NodeTreeItem extends StatelessWidget {
                   child: Text(
                     nodeName,
                     style: context.typography.body.medium.copyWith(
-                      color: effectiveSelected
-                          ? Colors.white
-                          : effectiveHovered
-                          ? context.colors.foreground.primary
-                          : context.colors.foreground.muted,
+                      color:
+                          effectiveSelected
+                              ? Colors.white
+                              : effectiveHovered
+                              ? context.colors.foreground.primary
+                              : context.colors.foreground.muted,
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,

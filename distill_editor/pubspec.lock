@@ -174,6 +174,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  hugeicons:
+    dependency: transitive
+    description:
+      name: hugeicons
+      sha256: f58e43b834a04ca70c553d1f6c8481c415c0a1ecf5f8540aa0a3094993d3cd31
+      url: "https://onepub.dev/api/kdpxxpsdav/"
+    source: hosted
+    version: "1.1.5"
   leak_tracker:
     dependency: transitive
     description:
@@ -222,6 +230,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.9"
+  macos_window_utils:
+    dependency: "direct main"
+    description:
+      name: macos_window_utils
+      sha256: cb918e1ff0b31fdaa5cd8631eded7c24bd72e1025cf1f95c819e483f0057c652
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.9.1"
   matcher:
     dependency: transitive
     description:

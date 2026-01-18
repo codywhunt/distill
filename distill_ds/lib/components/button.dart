@@ -5,6 +5,7 @@ import '../foundation/tappable.dart';
 import '../foundation/widget_states.dart';
 import '../styles/button_style.dart';
 import '../tokens/theme.dart';
+import 'icon.dart';
 
 /// A customizable button component built on [HoloTappable].
 ///
@@ -19,10 +20,17 @@ import '../tokens/theme.dart';
 ///   onPressed: () => save(),
 /// )
 ///
-/// // With icon
+/// // With icon (LucideIcons)
 /// HoloButton(
 ///   label: 'Add Item',
-///   icon: LucideIcons.plus,
+///   icon: LucideIcons.plus.holo,
+///   onPressed: () => addItem(),
+/// )
+///
+/// // With HugeIcons
+/// HoloButton(
+///   label: 'Add Item',
+///   icon: HoloIconData.huge(HugeIconsStrokeRounded.add01),
 ///   onPressed: () => addItem(),
 /// )
 ///
@@ -47,7 +55,13 @@ class HoloButton extends StatelessWidget {
   final String? label;
 
   /// An icon to display in the button.
-  final IconData? icon;
+  ///
+  /// Supports both standard [IconData] and HugeIcons via [HoloIconData]:
+  /// ```dart
+  /// icon: LucideIcons.plus.holo  // LucideIcons
+  /// icon: HoloIconData.huge(HugeIconsStrokeRounded.add01)  // HugeIcons
+  /// ```
+  final HoloIconData? icon;
 
   /// Called when the button is pressed.
   final VoidCallback? onPressed;
@@ -113,7 +127,7 @@ class HoloButton extends StatelessWidget {
   factory HoloButton.primary({
     Key? key,
     String? label,
-    IconData? icon,
+    HoloIconData? icon,
     VoidCallback? onPressed,
     bool isLoading = false,
     bool isDisabled = false,
@@ -141,8 +155,8 @@ class HoloButton extends StatelessWidget {
       cursor: SystemMouseCursors.basic,
       enabled: _isInteractive,
       pressScale: pressScale,
-      builder: (context, states, _) =>
-          _buildButton(context, states, effectiveStyle),
+      builder:
+          (context, states, _) => _buildButton(context, states, effectiveStyle),
     );
   }
 
@@ -210,9 +224,10 @@ class HoloButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null && borderWidth > 0
-            ? Border.all(color: borderColor, width: borderWidth)
-            : null,
+        border:
+            borderColor != null && borderWidth > 0
+                ? Border.all(color: borderColor, width: borderWidth)
+                : null,
       ),
       child: _buildContent(context, fgColor, textStyle, iconSize, iconGap),
     );
@@ -244,7 +259,7 @@ class HoloButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: iconSize, color: fgColor),
+          HoloIcon(icon!, size: iconSize, color: fgColor),
           SizedBox(width: iconGap),
           Text(label!, style: textStyle.copyWith(color: fgColor)),
         ],
@@ -252,7 +267,7 @@ class HoloButton extends StatelessWidget {
     }
 
     if (hasIcon) {
-      return Icon(icon, size: iconSize, color: fgColor);
+      return HoloIcon(icon!, size: iconSize, color: fgColor);
     }
 
     return Text(label!, style: textStyle.copyWith(color: fgColor));
@@ -262,9 +277,15 @@ class HoloButton extends StatelessWidget {
 /// An icon-only button variant.
 ///
 /// A compact button that displays only an icon.
+///
+/// Supports both standard [IconData] and HugeIcons via [HoloIconData]:
+/// ```dart
+/// HoloIconButton(icon: LucideIcons.plus.holo)
+/// HoloIconButton(icon: HoloIconData.huge(HugeIconsStrokeRounded.add01))
+/// ```
 class HoloIconButton extends StatelessWidget {
   /// The icon to display.
-  final IconData icon;
+  final HoloIconData icon;
 
   /// Called when the button is pressed.
   final VoidCallback? onPressed;
@@ -327,20 +348,19 @@ class HoloIconButton extends StatelessWidget {
         final borderWidth = effectiveStyle.borderWidth ?? 0;
         final borderRadius = effectiveStyle.borderRadius ?? context.radius.xs;
 
-        return AnimatedContainer(
-          duration: context.motion.fast,
-          curve: context.motion.standard,
+        return Container(
           width: effectiveSize,
           height: effectiveSize,
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(borderRadius),
-            border: borderColor != null && borderWidth > 0
-                ? Border.all(color: borderColor, width: borderWidth)
-                : null,
+            border:
+                borderColor != null && borderWidth > 0
+                    ? Border.all(color: borderColor, width: borderWidth)
+                    : null,
           ),
           child: Center(
-            child: Icon(icon, size: effectiveIconSize, color: fgColor),
+            child: HoloIcon(icon, size: effectiveIconSize, color: fgColor),
           ),
         );
       },

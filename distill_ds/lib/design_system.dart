@@ -83,6 +83,7 @@ export 'tokens/theme.dart';
 export 'styles/button_style.dart';
 
 // Components
+export 'components/icon.dart';
 export 'components/button.dart';
 export 'components/avatar.dart';
 export 'components/popover/popover.dart';
@@ -94,5 +95,8 @@ export 'components/tooltip.dart';
 export 'components/segmented_control.dart';
 
 // Re-export commonly used packages
+export 'package:hugeicons/hugeicons.dart';
+export 'package:hugeicons/styles/stroke_rounded.dart';
+export 'package:hugeicons/styles/bulk_rounded.dart';
 export 'package:lucide_icons_flutter/lucide_icons.dart';
 export 'package:flutter_svg/flutter_svg.dart';

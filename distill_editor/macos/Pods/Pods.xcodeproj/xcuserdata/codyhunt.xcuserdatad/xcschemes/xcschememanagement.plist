@@ -29,6 +29,16 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>macos_window_utils-macos_window_utils_privacy.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>macos_window_utils.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>shared_preferences_foundation-shared_preferences_foundation_privacy.xcscheme</key>
 		<dict>
 			<key>isShown</key>
