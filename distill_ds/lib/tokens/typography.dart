@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-const String _headingsFontFamily = 'InterVariable';
-const String _bodyFontFamily = 'InterVariable';
-const String _monoFontFamily = 'JetBrainsMono';
+const String _headingsFontFamily = 'GeistVariable';
+const String _bodyFontFamily = 'GeistVariable';
+const String _monoFontFamily = 'GeistMonoVariable';
 
 const _defaultFontWeight = FontVariation('wght', 300);
 const _mediumFontWeight = FontVariation('wght', 300);

@@ -42,8 +42,9 @@ class AppTheme {
   // Typography
   // ─────────────────────────────────────────────────────────────────────────
 
-  static const fontMono = 'JetBrains Mono';
-  static const fontSans = '.SF Pro Text'; // Falls back to system
+  // Font family names matching the bundled fonts in distill_ds
+  static const fontMono = 'GeistMonoVariable';
+  static const fontSans = 'GeistVariable';
 
   // ─────────────────────────────────────────────────────────────────────────
   // Theme Data
@@ -153,9 +154,9 @@ class AppTheme {
         border: Border.all(color: border, width: 0.5),
       ),
       textStyle: const TextStyle(
+        fontFamily: fontMono,
         fontSize: 11,
         color: textPrimary,
-        fontFamily: fontMono,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       waitDuration: const Duration(milliseconds: 400),

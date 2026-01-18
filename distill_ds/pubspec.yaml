@@ -27,21 +27,14 @@ flutter:
   assets:
     - assets/svgs/
     - assets/logos/
-    - assets/fonts/
 
   fonts:
-    - family: InterVariable
+    - family: GeistVariable
       fonts:
-        - asset: assets/fonts/InterVariable.ttf
-        - asset: assets/fonts/InterVariable-Italic.ttf
+        - asset: assets/fonts/GeistVariable.ttf
+        - asset: assets/fonts/GeistVariable-Italic.ttf
           style: italic
-    - family: JetBrainsMono
+    - family: GeistMonoVariable
       fonts:
-        - asset: assets/fonts/JetBrainsMono-Regular.ttf
-        - asset: assets/fonts/JetBrainsMono-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/JetBrainsMono-Bold.ttf
-          weight: 700
+        - asset: assets/fonts/GeistMonoVariable.ttf
 

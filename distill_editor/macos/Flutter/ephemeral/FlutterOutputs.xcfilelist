@@ -1,5 +1,8 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/App
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/Info.plist
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/distill_ds/assets/fonts/GeistMonoVariable.ttf
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/distill_ds/assets/fonts/GeistVariable-Italic.ttf
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/distill_ds/assets/fonts/GeistVariable.ttf
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/distill_ds/assets/svgs/df_logo_small.svg
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/AssetManifest.bin
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/FontManifest.json
@@ -11,12 +14,9 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/fonts/MaterialIcons-Regular.otf
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/isolate_snapshot_data
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/kernel_blob.bin
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/InterVariable-Italic.ttf
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/InterVariable.ttf
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/JetBrainsMono-Bold.ttf
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/JetBrainsMono-Medium.ttf
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/JetBrainsMono-Regular.ttf
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/JetBrainsMono-SemiBold.ttf
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/GeistMonoVariable.ttf
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/GeistVariable-Italic.ttf
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/fonts/GeistVariable.ttf
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/logos/distill-logomark-dark.png
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/logos/distill-logomark-light.png
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/build/macos/Build/Products/Debug/App.framework/Versions/A/Resources/flutter_assets/packages/distill_ds/assets/svgs/df_logo_small.svg

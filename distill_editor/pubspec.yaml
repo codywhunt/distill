@@ -58,3 +58,13 @@ flutter:
     - assets/bezels/
     - ../distill_ds/assets/svgs/
 
+  fonts:
+    - family: GeistVariable
+      fonts:
+        - asset: ../distill_ds/assets/fonts/GeistVariable.ttf
+        - asset: ../distill_ds/assets/fonts/GeistVariable-Italic.ttf
+          style: italic
+    - family: GeistMonoVariable
+      fonts:
+        - asset: ../distill_ds/assets/fonts/GeistMonoVariable.ttf
+

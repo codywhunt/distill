@@ -100,11 +100,13 @@ class HologramTooltip extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 380),
           child: Text(
             message!,
-            style: context.typography.body.medium.copyWith(
-              color: context.colors.foreground.tooltip,
-              fontFamily:
-                  tooltipStyle == TooltipStyle.code ? 'JetBrainsMono' : null,
-            ),
+            style: tooltipStyle == TooltipStyle.code
+                ? context.typography.mono.medium.copyWith(
+                    color: context.colors.foreground.tooltip,
+                  )
+                : context.typography.body.medium.copyWith(
+                    color: context.colors.foreground.tooltip,
+                  ),
           ),
         ),
         decoration: BoxDecoration(

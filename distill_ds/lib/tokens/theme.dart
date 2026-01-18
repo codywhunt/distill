@@ -123,10 +123,14 @@ ColorScheme _createColorScheme(HoloColors colors, Brightness brightness) {
   );
 }
 
+/// The default font family for the design system.
+const String _defaultFontFamily = 'GeistVariable';
+
 /// Builds the light theme [ThemeData].
 ThemeData _buildLightTheme() {
   return ThemeData(
     brightness: Brightness.light,
+    fontFamily: _defaultFontFamily,
     colorScheme: _createColorScheme(holoColorsLight, Brightness.light),
     extensions: [
       holoColorsLight,
@@ -143,6 +147,7 @@ ThemeData _buildLightTheme() {
 ThemeData _buildDarkTheme() {
   return ThemeData(
     brightness: Brightness.dark,
+    fontFamily: _defaultFontFamily,
     colorScheme: _createColorScheme(holoColorsDark, Brightness.dark),
     extensions: [
       holoColorsDark,
