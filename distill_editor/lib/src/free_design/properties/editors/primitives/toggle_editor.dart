@@ -40,7 +40,7 @@ class ToggleEditor<T> extends StatelessWidget {
   final T? value;
 
   /// Map of option values to their icons.
-  final Map<T, IconData> options;
+  final Map<T, HoloIconData> options;
 
   /// Called when the value changes.
   final ValueChanged<T?>? onChanged;

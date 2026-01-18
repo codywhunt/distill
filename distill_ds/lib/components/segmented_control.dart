@@ -5,7 +5,7 @@ import 'package:distill_ds/design_system.dart';
 /// A class that represents a single item within a [SegmentedControl].
 class SegmentedControlItem<T> {
   /// The icon to display in the segment.
-  final IconData? icon;
+  final HoloIconData? icon;
 
   /// A custom widget to display instead of an icon.
   /// If provided, this takes precedence over [icon].
@@ -188,7 +188,7 @@ class _SegmentedControlState<T> extends State<SegmentedControl<T>> {
 
   // Get the fixed icon size for all segments
   double _getIconSize() {
-    return 14;
+    return 16;
   }
 
   // Get text style based for the control
@@ -236,7 +236,7 @@ class _SegmentedControlState<T> extends State<SegmentedControl<T>> {
 
   // Get the border radius based on item position
   BorderRadius _getBorderRadius(bool isFirst, bool isLast) {
-    const double outerRadius = 4.5;
+    const double outerRadius = 6.5;
     const double innerRadius = 2.0;
 
     return BorderRadius.only(
@@ -323,8 +323,8 @@ class _SegmentedControlState<T> extends State<SegmentedControl<T>> {
                         ),
                         child: item.iconWidget!,
                       )
-                      : Icon(
-                        item.icon,
+                      : HoloIcon(
+                        item.icon!,
                         size: _getIconSize(),
                         color: _getForegroundColor(
                           context,
@@ -515,8 +515,8 @@ class _SegmentedControlState<T> extends State<SegmentedControl<T>> {
                         ),
                         child: item.iconWidget!,
                       )
-                      : Icon(
-                        item.icon,
+                      : HoloIcon(
+                        item.icon!,
                         size: _getIconSize(),
                         color: _getForegroundColor(
                           context,
@@ -562,7 +562,7 @@ class _SegmentedControlState<T> extends State<SegmentedControl<T>> {
       width: double.infinity, // Allow container to expand to full width
       decoration: BoxDecoration(
         color: context.colors.overlay.overlay05,
-        borderRadius: BorderRadius.circular(context.radius.sm),
+        borderRadius: BorderRadius.circular(context.radius.md),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.max, // Fill available space
@@ -663,7 +663,7 @@ class SegmentedControlIcon<T> extends StatelessWidget {
     final iconItems =
         items.map((item) {
           return SegmentedControlItem<T>(
-            icon: item.icon ?? Icons.circle,
+            icon: item.icon ?? HoloIconData.icon(Icons.circle),
             value: item.value,
             enabled: item.enabled,
             tooltip: item.tooltip,

@@ -158,7 +158,7 @@ class LayoutSectionV2 extends StatelessWidget {
                         items: [
                           SegmentedControlItem<String>(
                             value: 'hug',
-                            icon: LucideIcons.foldHorizontal,
+                            label: 'Hug',
                             tooltip: HologramTooltip(
                               message: 'Hug',
                               child: const SizedBox.shrink(),
@@ -166,7 +166,7 @@ class LayoutSectionV2 extends StatelessWidget {
                           ),
                           SegmentedControlItem<String>(
                             value: 'fixed',
-                            icon: LucideIcons.minus,
+                            label: 'Fixed',
                             tooltip: HologramTooltip(
                               message: 'Fixed',
                               child: const SizedBox.shrink(),
@@ -174,7 +174,7 @@ class LayoutSectionV2 extends StatelessWidget {
                           ),
                           SegmentedControlItem<String>(
                             value: 'fill',
-                            icon: LucideIcons.unfoldHorizontal,
+                            label: 'Fill',
                             enabled: fillReason == null,
                             tooltip: HologramTooltip(
                               message: fillReason ?? 'Fill',
@@ -238,7 +238,7 @@ class LayoutSectionV2 extends StatelessWidget {
                         items: [
                           SegmentedControlItem<String>(
                             value: 'hug',
-                            icon: LucideIcons.foldVertical,
+                            label: 'Hug',
                             tooltip: HologramTooltip(
                               message: 'Hug',
                               child: const SizedBox.shrink(),
@@ -246,7 +246,7 @@ class LayoutSectionV2 extends StatelessWidget {
                           ),
                           SegmentedControlItem<String>(
                             value: 'fixed',
-                            icon: LucideIcons.minus,
+                            label: 'Fixed',
                             tooltip: HologramTooltip(
                               message: 'Fixed',
                               child: const SizedBox.shrink(),
@@ -254,7 +254,7 @@ class LayoutSectionV2 extends StatelessWidget {
                           ),
                           SegmentedControlItem<String>(
                             value: 'fill',
-                            icon: LucideIcons.unfoldVertical,
+                            label: 'Fill',
                             enabled: fillReason == null,
                             tooltip: HologramTooltip(
                               message: fillReason ?? 'Fill',
@@ -307,8 +307,10 @@ class LayoutSectionV2 extends StatelessWidget {
                   child: ToggleEditor<model.LayoutDirection>(
                     value: autoLayout.direction,
                     options: {
-                      model.LayoutDirection.horizontal: LucideIcons.arrowRight,
-                      model.LayoutDirection.vertical: LucideIcons.arrowDown,
+                      model.LayoutDirection.horizontal:
+                          LucideIcons.arrowRight.holo,
+                      model.LayoutDirection.vertical:
+                          LucideIcons.arrowDown.holo,
                     },
                     onChanged: (value) {
                       if (value != null) {

@@ -164,12 +164,12 @@ class _SearchBarBreadcrumb extends StatelessWidget {
         );
 
         return Container(
-          height: 34,
+          height: 30,
           constraints: const BoxConstraints(maxWidth: 450),
           padding: EdgeInsets.only(left: 14, right: context.spacing.md),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(context.radius.full),
+            borderRadius: BorderRadius.circular(context.radius.md),
             border: Border.all(
               color: context.colors.overlay.overlay10,
               width: 1,
@@ -191,7 +191,7 @@ class _SearchBarBreadcrumb extends StatelessWidget {
               SizedBox(width: context.spacing.md),
               HoloIcon(
                 HoloIconData.huge(HugeIconsStrokeRounded.search01),
-                size: 16,
+                size: 14,
                 color: context.colors.foreground.disabled,
               ),
             ],

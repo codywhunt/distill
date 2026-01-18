@@ -64,8 +64,8 @@ class AutoLayoutSection extends StatelessWidget {
                   child: ToggleEditor<LayoutDirection>(
                     value: autoLayout.direction,
                     options: {
-                      LayoutDirection.horizontal: LucideIcons.arrowRight200,
-                      LayoutDirection.vertical: LucideIcons.arrowDown200,
+                      LayoutDirection.horizontal: LucideIcons.arrowRight200.holo,
+                      LayoutDirection.vertical: LucideIcons.arrowDown200.holo,
                     },
                     optionLabels: const {
                       LayoutDirection.horizontal: 'Horizontal',

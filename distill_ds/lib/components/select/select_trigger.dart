@@ -100,11 +100,11 @@ class HoloSelectTrigger extends StatelessWidget {
 
         return Container(
           width: width,
-          height: 34,
-          padding: const EdgeInsets.only(left: 14, right: 6),
+          height: 30,
+          padding: const EdgeInsets.only(left: 10, right: 6),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(context.radius.full),
+            borderRadius: BorderRadius.circular(context.radius.md),
             border: Border.all(color: borderColor, width: 0.8),
           ),
           child: Row(

@@ -50,6 +50,18 @@ class ContentSection extends StatelessWidget {
       return _buildImageProps(context, props);
     }
 
+    if (props is SpacerProps) {
+      return _buildSpacerProps(context, props);
+    }
+
+    if (props is InstanceProps) {
+      return _buildInstanceProps(context, props);
+    }
+
+    if (props is SlotProps) {
+      return _buildSlotProps(context, props);
+    }
+
     return const SizedBox.shrink();
   }
 
@@ -66,6 +78,20 @@ class ContentSection extends StatelessWidget {
           ),
           child: Column(
             children: [
+              PropertyField(
+                label: 'Clip Content',
+                child: BooleanEditor(
+                  value: props.clipContent,
+                  onChanged: (value) {
+                    store.updateNodeProp(
+                      nodeId,
+                      '/props/clipContent',
+                      value ?? false,
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: context.spacing.xs),
               PropertyField(
                 label: 'Scrollable',
                 child: BooleanEditor(
@@ -227,6 +253,57 @@ class ContentSection extends StatelessWidget {
                   ),
                 ),
               ),
+              SizedBox(height: 6),
+              PropertyField(
+                label: 'Line Height',
+                child: NumberEditor(
+                  value: props.lineHeight,
+                  placeholder: 'Auto',
+                  onChanged: (v) {
+                    store.updateNodeProp(
+                      nodeId,
+                      '/props/lineHeight',
+                      v?.toDouble(),
+                    );
+                  },
+                  min: 0.5,
+                  max: 3,
+                  allowDecimals: true,
+                ),
+              ),
+              SizedBox(height: 6),
+              PropertyField(
+                label: 'Letter Spacing',
+                child: NumberEditor(
+                  value: props.letterSpacing,
+                  placeholder: '0',
+                  onChanged: (v) {
+                    store.updateNodeProp(
+                      nodeId,
+                      '/props/letterSpacing',
+                      v?.toDouble(),
+                    );
+                  },
+                  allowDecimals: true,
+                ),
+              ),
+              SizedBox(height: 6),
+              PropertyField(
+                label: 'Decoration',
+                child: DropdownEditor<String>(
+                  value: props.decoration.name,
+                  items: const [
+                    DropdownItem(value: 'none', label: 'None'),
+                    DropdownItem(value: 'underline', label: 'Underline'),
+                    DropdownItem(value: 'lineThrough', label: 'Strikethrough'),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      store.updateNodeProp(nodeId, '/props/decoration', value);
+                    }
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -351,6 +428,21 @@ class ContentSection extends StatelessWidget {
                   },
                 ),
               ),
+              SizedBox(height: 6),
+              PropertyField(
+                label: 'Alt Text',
+                child: TextEditor(
+                  value: props.alt ?? '',
+                  placeholder: 'Image description',
+                  onChanged: (value) {
+                    store.updateNodeProp(
+                      nodeId,
+                      '/props/alt',
+                      value == null || value.isEmpty ? null : value,
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -393,5 +485,67 @@ class ContentSection extends StatelessWidget {
       return '{$colorString}';
     }
     return colorString;
+  }
+
+  Widget _buildSpacerProps(BuildContext context, SpacerProps props) {
+    return Column(
+      children: [
+        const PropertySectionHeader(title: 'Spacer', showTopDivider: false),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: PropertyField(
+            label: 'Flex',
+            child: NumberEditor(
+              value: props.flex.toDouble(),
+              onChanged: (v) {
+                if (v != null && v >= 1) {
+                  store.updateNodeProp(nodeId, '/props/flex', v.toInt());
+                }
+              },
+              min: 1,
+              allowDecimals: false,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInstanceProps(BuildContext context, InstanceProps props) {
+    return Column(
+      children: [
+        const PropertySectionHeader(title: 'Instance', showTopDivider: false),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: PropertyField(
+            label: 'Component',
+            child: TextEditor(
+              value: props.componentId,
+              disabled: true,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSlotProps(BuildContext context, SlotProps props) {
+    return Column(
+      children: [
+        const PropertySectionHeader(title: 'Slot', showTopDivider: false),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: PropertyField(
+            label: 'Name',
+            child: TextEditor(
+              value: props.slotName,
+              onChanged: (value) {
+                store.updateNodeProp(nodeId, '/props/slotName', value);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

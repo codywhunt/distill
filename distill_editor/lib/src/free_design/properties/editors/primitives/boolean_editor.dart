@@ -49,10 +49,10 @@ class BooleanEditor extends StatelessWidget {
   final String falseLabel;
 
   /// Icon for the true state (optional).
-  final IconData? trueIcon;
+  final HoloIconData? trueIcon;
 
   /// Icon for the false state (optional).
-  final IconData? falseIcon;
+  final HoloIconData? falseIcon;
 
   /// Whether the input is disabled.
   final bool disabled;

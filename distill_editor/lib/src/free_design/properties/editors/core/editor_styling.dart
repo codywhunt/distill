@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:distill_ds/design_system.dart';
 
 /// Standard editor height for property inputs.
-const double editorHeight = 28.0;
+const double editorHeight = 30.0;
 
 /// Standard placeholder for empty/unset values.
 const String editorEmptyPlaceholder = '-';
@@ -71,9 +71,10 @@ class EditorTextStyles {
 
   static TextStyle input(BuildContext context, {bool disabled = false}) {
     return context.typography.body.medium.copyWith(
-      color: disabled
-          ? context.colors.foreground.disabled
-          : context.colors.foreground.primary,
+      color:
+          disabled
+              ? context.colors.foreground.disabled
+              : context.colors.foreground.primary,
     );
   }
 
@@ -84,20 +85,22 @@ class EditorTextStyles {
   }) {
     return isSet
         ? context.typography.mono.small.copyWith(
-            color: context.colors.foreground.primary,
-          )
+          color: context.colors.foreground.primary,
+        )
         : context.typography.body.medium.copyWith(
-            color: disabled
-                ? context.colors.foreground.disabled
-                : context.colors.foreground.primary,
-          );
+          color:
+              disabled
+                  ? context.colors.foreground.disabled
+                  : context.colors.foreground.primary,
+        );
   }
 
   static TextStyle placeholder(BuildContext context, {bool disabled = false}) {
     return context.typography.body.medium.copyWith(
-      color: disabled
-          ? context.colors.foreground.disabled
-          : context.colors.foreground.disabled,
+      color:
+          disabled
+              ? context.colors.foreground.disabled
+              : context.colors.foreground.disabled,
     );
   }
 
@@ -107,9 +110,10 @@ class EditorTextStyles {
     bool disabled = false,
   }) {
     return context.typography.mono.small.copyWith(
-      color: disabled
-          ? context.colors.foreground.disabled
-          : context.colors.foreground.weak,
+      color:
+          disabled
+              ? context.colors.foreground.disabled
+              : context.colors.foreground.weak,
       fontSize: 10,
     );
   }
@@ -131,4 +135,4 @@ TextSelectionThemeData editorTextSelectionTheme(BuildContext context) {
 }
 
 /// Border radius helper using design system tokens.
-double editorBorderRadius(BuildContext context) => context.radius.sm;
+double editorBorderRadius(BuildContext context) => context.radius.md;

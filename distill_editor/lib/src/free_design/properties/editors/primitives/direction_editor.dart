@@ -74,7 +74,7 @@ class DirectionEditor extends StatelessWidget {
         items: [
           SegmentedControlItem<String>(
             value: 'horizontal',
-            icon: Icons.view_column,
+            icon: Icons.view_column.holo,
             tooltip: HologramTooltip(
               message: 'Horizontal',
               child: const SizedBox.shrink(),
@@ -82,7 +82,7 @@ class DirectionEditor extends StatelessWidget {
           ),
           SegmentedControlItem<String>(
             value: 'vertical',
-            icon: Icons.view_agenda,
+            icon: Icons.view_agenda.holo,
             tooltip: HologramTooltip(
               message: 'Vertical',
               child: const SizedBox.shrink(),
