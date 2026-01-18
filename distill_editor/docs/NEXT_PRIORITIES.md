@@ -2,6 +2,8 @@
 
 Focused roadmap for getting Distill from "promising demo" to "usable tool."
 
+**Last Updated:** Based on comprehensive code audit
+
 ---
 
 ## Philosophy
@@ -12,15 +14,30 @@ The architecture is sound. The 3-stage pipeline, immutable IR, patch protocol, a
 
 ---
 
-## Priority 1: Fix Drag & Drop
+## Status Summary
 
-**Status:** Broken/incomplete on canvas and layer tree
+| Priority | Feature | Status | Completion |
+|----------|---------|--------|------------|
+| 1 | Drag & Drop | ✅ **COMPLETE** | 100% |
+| 2 | Document & Frame Management | ✅ **COMPLETE** | 100% |
+| 3 | Copy & Paste | ✅ **COMPLETE** | 100% |
+| 4 | DSL Round-Trip Fidelity | ⚠️ **NEEDS TESTING** | 95% code, 0% tests |
+| 5 | AI Patch Mode | ✅ **COMPLETE** | 100% |
+| 6 | Quick-Edit Overlays | ❌ **NOT STARTED** | 0% |
+| 7 | Prompt Box Improvements | ⚠️ **PARTIAL** | 50% |
 
-### What's Wrong
-- Reparenting nodes via drag doesn't work reliably
-- Reordering children within a parent has edge cases
-- Layer tree drag/drop is incomplete
-- Visual feedback during drag is inconsistent
+---
+
+## Priority 1: Fix Drag & Drop ✅ COMPLETE
+
+**Status:** Fully implemented with comprehensive testing
+
+### Implementation
+- Canvas drag: move, resize, marquee selection
+- Layer tree drag/drop with selection sync
+- Reparenting and reordering with visual feedback
+- 80+ tests covering all scenarios
+- 9 documented invariants enforced
 
 ### Success Criteria
 - [x] Drag node to new parent on canvas → reparents correctly
@@ -30,22 +47,18 @@ The architecture is sound. The 3-stage pipeline, immutable IR, patch protocol, a
 - [x] Invalid drops are prevented (can't drop parent into child)
 - [x] Undo reverses the operation cleanly
 
-### Why First
-Can't edit without this. Every other feature depends on reliable node manipulation.
-
 ---
 
-## Priority 2: Document & Frame Management
+## Priority 2: Document & Frame Management ✅ COMPLETE
 
-**Status:** No UI exists
+**Status:** Fully implemented with persistence and UI
 
-### What's Missing
-- No document creation flow
-- No save/load (persistence)
-- No frame list sidebar
-- No frame navigation
-- Can't rename frames easily
-- Can't delete frames
+### Implementation
+- `DocumentPersistenceService` with platform-specific I/O
+- Frame list panel with create/delete/rename
+- Frame navigation (click to pan)
+- Inline frame renaming on double-click
+- Full undo/redo support
 
 ### Success Criteria
 - [x] Create new document (empty canvas)
@@ -57,62 +70,56 @@ Can't edit without this. Every other feature depends on reliable node manipulati
 - [x] Delete frame with confirmation
 - [x] Create new empty frame at canvas position
 
-### Why Now
-Without this, you can't use the tool for real projects. You're stuck in single-session demos.
-
 ---
 
-## Priority 3: Copy & Paste
+## Priority 3: Copy & Paste ✅ COMPLETE
 
-**Status:** Not implemented
+**Status:** Fully implemented with all keyboard shortcuts
 
-### Scope
-- Copy selected node(s)
-- Paste into current selection or at cursor position
-- Cut (copy + delete)
-- Duplicate (copy + paste in place with offset)
-
-### Implementation Notes
-- Clipboard format: serialized Node subtree (or DSL?)
-- On paste: generate new IDs for all nodes
-- Handle cross-frame paste
-- Preserve relative positions for multi-select
+### Implementation
+- `ClipboardService` with dual clipboard (internal + system)
+- `ClipboardPayload` for serialization
+- `NodeRemapper` for ID regeneration
+- All shortcuts wired: Cmd+C/V/X/D
+- Cross-frame paste working
+- Multi-select with relative position preservation
 
 ### Success Criteria
-- [ ] Cmd+C copies selected node(s)
-- [ ] Cmd+V pastes at cursor or into selection
-- [ ] Cmd+X cuts
-- [ ] Cmd+D duplicates with offset
-- [ ] Pasted nodes get fresh IDs (no collisions)
-- [ ] Cross-frame copy works
-- [ ] Undo reverses paste
-
-### Why Now
-Basic editing primitive. Users expect this to exist.
+- [x] Cmd+C copies selected node(s)
+- [x] Cmd+V pastes at cursor or into selection
+- [x] Cmd+X cuts
+- [x] Cmd+D duplicates with offset
+- [x] Pasted nodes get fresh IDs (no collisions)
+- [x] Cross-frame copy works
+- [x] Undo reverses paste
 
 ---
 
-## Priority 4: DSL Round-Trip Fidelity
+## Priority 4: DSL Round-Trip Fidelity ⚠️ NEEDS TESTING
 
-**Status:** Unknown—no systematic testing
+**Status:** Implementation complete, **ZERO TEST COVERAGE**
 
 ### The Problem
-DSL is the contract between human editing and AI generation. If `parse(export(doc)) != doc`, then:
-- AI-generated content silently loses properties
-- Edits disappear on regeneration
-- Debugging becomes a nightmare
+DSL parser and exporter work and are actively used in AI generation, but have no tests. This is a critical gap - we're using untested code in production.
 
-### Approach
-1. Property coverage audit: list every property in IR, verify DSL handles it
-2. Fuzz testing: generate random valid documents, round-trip, compare
-3. Edge case catalog: empty values, special characters, deep nesting, token refs
+### Implementation (Complete)
+- `DslParser` (637 lines) - parses DSL to Frame + Nodes
+- `DslExporter` (460 lines) - exports Frame + Nodes to DSL
+- Active in `ai_service.dart` for frame generation
+- Supports all 7 node types, most properties
+
+### Testing Gap (Critical)
+- ❌ No round-trip tests
+- ❌ No property coverage tests
+- ❌ No fuzz tests
+- ❌ No edge case tests
 
 ### Success Criteria
-- [ ] Every Node property has DSL representation
-- [ ] Every NodeLayout property has DSL representation
-- [ ] Every NodeStyle property has DSL representation
+- [ ] Every Node property has round-trip test
+- [ ] Every NodeLayout property has round-trip test
+- [ ] Every NodeStyle property has round-trip test
 - [ ] Fuzz test: 1000 random docs round-trip without diff
-- [ ] Edge cases documented and tested:
+- [ ] Edge cases tested:
   - [ ] Empty string text
   - [ ] Unicode in text content
   - [ ] Token references (`{color.primary}`)
@@ -121,75 +128,47 @@ DSL is the contract between human editing and AI generation. If `parse(export(do
   - [ ] Component instances with overrides
 
 ### Why Now
-AI quality depends on DSL fidelity. Fix this before improving AI prompts.
+AI quality depends on DSL fidelity. If round-trip is lossy, AI-generated content silently loses properties. **Test this before trusting AI output.**
+
+**See:** `docs/PRD_PRIORITY_4_DSL_FIDELITY.md` for detailed test plan
 
 ---
 
-## Priority 5: AI Patch Mode
+## Priority 5: AI Patch Mode ✅ COMPLETE
 
-**Status:** AI only does full regeneration
-
-### Current Flow
-```
-User: "make the button blue"
-AI: regenerates entire frame DSL
-System: replaces all nodes
-```
-
-### Better Flow
-```
-User: "make the button blue"
-AI: emits patch operations
-System: applies surgical change
-```
+**Status:** Fully implemented and actively used in UI
 
 ### Implementation
-1. New prompt template for patch emission
-2. AI returns JSON patch array instead of DSL
-3. Validate patches before applying
-4. Show user what changed (diff view?)
-
-### Patch Output Format
-```json
-{
-  "patches": [
-    { "op": "SetProp", "id": "n_button", "path": "/style/fill/color", "value": "#007AFF" }
-  ],
-  "explanation": "Changed button fill to blue"
-}
-```
+- `EditViaPatchesPrompt` - comprehensive prompt template
+- `PatchOpsParser` - robust JSON extraction from AI responses
+- `PatchValidator` - full invariant checking before apply
+- `PatchApplier` - immutable patch application (well-tested)
+- Auto-repair with 2 retries on validation failure
+- Wired in `prompt_box_overlay.dart`
 
 ### Success Criteria
-- [ ] AI can emit patches for property changes
-- [ ] AI can emit patches for structural changes (add/remove node)
-- [ ] Patches are validated before application
-- [ ] Failed patches show clear error
-- [ ] User sees explanation of what changed
-- [ ] Fallback to full regeneration if patch mode fails
-
-### Why Now
-- Faster (fewer tokens)
-- Safer (surgical vs wholesale)
-- More trustworthy (user sees exactly what changed)
-- Patch protocol already exists—just need AI to use it
+- [x] AI can emit patches for property changes
+- [x] AI can emit patches for structural changes (add/remove node)
+- [x] Patches are validated before application
+- [x] Failed patches show clear error
+- [x] User sees explanation of what changed (via repair diagnostics)
+- [x] Fallback to full regeneration if patch mode fails
 
 ---
 
-## Priority 6: Quick-Edit Overlays
+## Priority 6: Quick-Edit Overlays ❌ NOT STARTED
 
-**Status:** Not implemented (in todos)
+**Status:** Not implemented (0%)
 
 ### What This Means
 When you select a node, show contextual edit controls directly on the canvas:
 - Text node → inline text editing (double-click to edit)
 - Any node → color swatch for quick fill change
-- Container → quick padding/gap adjusters
 
-### Scope (Start Small)
-1. **Double-click text node** → inline text editing
-2. **Fill color swatch** → click to open color picker
-
-Don't boil the ocean. These two alone are a big UX win.
+### Current State
+- Double-click detection exists but only triggers zoom, not edit
+- Color swatch exists in property panel but not on canvas
+- No overlay widgets or state management
 
 ### Success Criteria
 - [ ] Double-click text node enters inline edit mode
@@ -202,37 +181,68 @@ Don't boil the ocean. These two alone are a big UX win.
 ### Why Now
 Big UX improvement, relatively small scope. Makes the tool feel more direct-manipulation.
 
+**See:** `docs/PRD_PRIORITY_6_QUICK_EDIT_OVERLAYS.md` for detailed spec
+
 ---
 
-## Priority 7: Prompt Box Improvements
+## Priority 7: Prompt Box Improvements ⚠️ PARTIAL (50%)
 
-**Status:** Basic implementation exists
+**Status:** Basic implementation works, UX polish missing
 
-### Current Issues
-- Prompt box is large/intrusive
-- Not contextual to selection
-- No indication of what AI will affect
+### What's Working ✅
+- Basic prompt box widget
+- Text input with Enter/Escape
+- Context chips showing selection
+- Model selection dropdown
+- Loading state with spinner
+- AI integration (generate + patch modes)
 
-### Improvements
-1. **Smaller prompt box** — minimal input that expands on focus
-2. **Contextual positioning** — appears near selection, not fixed position
-3. **Scope indicator** — show what the AI will modify (selected node, frame, etc.)
-4. **History** — recent prompts accessible
+### What's Missing ❌
+- Prompt history (Up/Down arrow navigation)
+- Contextual positioning (fixed at bottom center)
+- Scope indicator ("Editing: Button")
+- Mode badges (CREATE/EDIT visual indicator)
+- Persistent history across sessions
+- Error display with retry button
 
 ### Success Criteria
-- [ ] Compact prompt input (single line, expands on focus)
+- [x] Basic prompt input works
+- [x] Loading state while AI generates
+- [ ] Compact prompt input (expands on focus)
 - [ ] Positioned near current selection
-- [ ] Shows "Editing: [node name]" or "Editing: [frame name]"
+- [ ] Shows "Editing: [node name]" or "Creating new frame"
 - [ ] Up arrow recalls previous prompts
-- [ ] Loading state while AI generates
 - [ ] Error state with retry option
 
 ### Why Now
 Makes AI feel integrated rather than bolted-on. Reduces friction for quick edits.
 
+**See:** `docs/PRD_PRIORITY_7_PROMPT_BOX.md` for detailed spec
+
 ---
 
-## Out of Scope (For Now)
+## Recommended Next Steps
+
+Based on the audit, here's the recommended work order:
+
+### Immediate (Do First)
+1. **DSL Testing (Priority 4)** - 3-4 days
+   - This is critical technical debt
+   - We're using untested code in production
+   - Write round-trip tests, edge case tests, fuzz tests
+
+### Short-term (After DSL Testing)
+2. **Quick-Edit Overlays (Priority 6)** - 3-5 days
+   - High user impact
+   - Inline text editing + color swatch
+   - Makes editing feel more direct
+
+3. **Prompt Box Polish (Priority 7)** - 3 days
+   - History navigation
+   - Scope indicator
+   - Contextual positioning
+
+### Out of Scope (For Now)
 
 These are good ideas but should wait:
 
@@ -249,23 +259,26 @@ These are good ideas but should wait:
 ## Sequencing
 
 ```
-[1] Drag & Drop ─────┐
-                     ├──→ [4] DSL Fidelity ──→ [5] AI Patch Mode
-[2] Doc Management ──┤
-                     │
-[3] Copy & Paste ────┘
-                          [6] Quick-Edit Overlays ──→ [7] Prompt Box
+COMPLETED:
+[1] Drag & Drop ────────┐
+                        ├──→ [5] AI Patch Mode ✅
+[2] Doc Management ─────┤
+                        │
+[3] Copy & Paste ───────┘
+
+REMAINING:
+[4] DSL Testing ──→ [6] Quick-Edit Overlays ──→ [7] Prompt Box Polish
+    (critical)         (high impact)              (polish)
 ```
 
-Priorities 1-3 are about **making editing work**.
-Priority 4 is about **making AI reliable**.
-Priority 5 is about **making AI better**.
-Priorities 6-7 are about **making the UX feel polished**.
+The completed foundations (1-3, 5) enable the remaining work. Priority 4 (DSL testing) should come first because it validates the AI pipeline that everything else depends on.
 
 ---
 
 ## How to Use This Document
 
-Pick the top incomplete priority. Work on it until the success criteria are met. Check off items as you go. Move to the next priority.
+1. Start with Priority 4 (DSL Testing) - it's critical technical debt
+2. Move to Priority 6 (Quick-Edit) - highest user impact
+3. Finish with Priority 7 (Prompt Box) - polish
 
-Resist the urge to skip ahead to the "interesting" stuff. The boring fundamentals are what make the interesting stuff usable.
+Check off items as you complete them. Update status when priorities change.
