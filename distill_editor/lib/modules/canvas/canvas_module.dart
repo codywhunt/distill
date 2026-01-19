@@ -10,6 +10,7 @@ import '../../workspace/components/panel_container.dart';
 import '../../workspace/workspace_layout_state.dart';
 import '../../workspace/workspace_state.dart';
 import 'canvas_state.dart';
+import 'widgets/component_library_panel.dart';
 import 'widgets/frame_list_panel.dart';
 import 'widgets/widget_tree_panel.dart';
 import 'widgets/widget_tree_state.dart';
@@ -57,6 +58,10 @@ class _CanvasLeftPanelState extends State<CanvasLeftPanel> {
         children: [
           // Frames section (collapsible, above layers)
           const FrameListPanel(),
+          // Divider
+          Container(height: 1, color: context.colors.overlay.overlay10),
+          // Components section (collapsible)
+          const ComponentLibraryPanel(),
           // Divider
           Container(height: 1, color: context.colors.overlay.overlay10),
           // Layers section (takes remaining space)

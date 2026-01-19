@@ -1,3 +1,4 @@
+import '../models/component_def.dart';
 import '../models/frame.dart';
 import '../models/node.dart';
 
@@ -20,6 +21,8 @@ sealed class PatchOp {
       'ReplaceNode' => ReplaceNode.fromJson(json),
       'InsertFrame' => InsertFrame.fromJson(json),
       'RemoveFrame' => RemoveFrame.fromJson(json),
+      'InsertComponent' => InsertComponent.fromJson(json),
+      'RemoveComponent' => RemoveComponent.fromJson(json),
       _ => throw ArgumentError('Unknown patch type: $type'),
     };
   }
@@ -449,4 +452,74 @@ class RemoveFrame extends PatchOp {
 
   @override
   String toString() => 'RemoveFrame($frameId)';
+}
+
+// =============================================================================
+// Component Operations
+// =============================================================================
+
+/// Insert a new component into the document.
+///
+/// IMPORTANT: All component nodes must be inserted BEFORE this operation
+/// so that [component.rootNodeId] references an existing node.
+class InsertComponent extends PatchOp {
+  /// The component to insert.
+  final ComponentDef component;
+
+  const InsertComponent(this.component);
+
+  factory InsertComponent.fromJson(Map<String, dynamic> json) {
+    return InsertComponent(
+      ComponentDef.fromJson(json['component'] as Map<String, dynamic>),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'InsertComponent',
+        'component': component.toJson(),
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is InsertComponent && component == other.component;
+
+  @override
+  int get hashCode => component.hashCode;
+
+  @override
+  String toString() => 'InsertComponent(${component.id})';
+}
+
+/// Remove a component from the document.
+///
+/// Note: This only removes the component definition. Component nodes
+/// should be deleted separately via [DeleteNode] operations.
+class RemoveComponent extends PatchOp {
+  /// Component ID to remove.
+  final String componentId;
+
+  const RemoveComponent(this.componentId);
+
+  factory RemoveComponent.fromJson(Map<String, dynamic> json) {
+    return RemoveComponent(json['componentId'] as String);
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'RemoveComponent',
+        'componentId': componentId,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RemoveComponent && componentId == other.componentId;
+
+  @override
+  int get hashCode => componentId.hashCode;
+
+  @override
+  String toString() => 'RemoveComponent($componentId)';
 }

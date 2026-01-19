@@ -71,6 +71,9 @@ class PatchInverter {
       ReplaceNode(:final id) => ReplaceNode(id: id, node: doc.nodes[id]!),
       InsertFrame(:final frame) => RemoveFrame(frame.id),
       RemoveFrame(:final frameId) => InsertFrame(doc.frames[frameId]!),
+      InsertComponent(:final component) => RemoveComponent(component.id),
+      RemoveComponent(:final componentId) =>
+        InsertComponent(doc.components[componentId]!),
     };
   }
 

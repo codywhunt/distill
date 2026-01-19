@@ -79,6 +79,12 @@ class PatchValidator {
 
         case RemoveFrame(:final frameId):
           _applyRemoveFrame(state, frameId, index, errors);
+
+        case InsertComponent(:final component):
+          _applyInsertComponent(state, component, index, errors);
+
+        case RemoveComponent(:final componentId):
+          _applyRemoveComponent(state, componentId, index, errors);
       }
     } catch (e) {
       errors.add('[$index] Error applying ${patch.runtimeType}: $e');
@@ -308,6 +314,37 @@ class PatchValidator {
       return;
     }
     state.frames.remove(frameId);
+  }
+
+  void _applyInsertComponent(
+    _DocumentState state,
+    ComponentDef component,
+    int patchIndex,
+    List<String> errors,
+  ) {
+    if (state.components.containsKey(component.id)) {
+      errors.add(
+        '[$patchIndex] InsertComponent: Component ${component.id} already exists',
+      );
+      return;
+    }
+    // Note: We validate rootNodeId exists in _validateInvariants
+    state.components[component.id] = component;
+  }
+
+  void _applyRemoveComponent(
+    _DocumentState state,
+    String componentId,
+    int patchIndex,
+    List<String> errors,
+  ) {
+    if (!state.components.containsKey(componentId)) {
+      errors.add(
+        '[$patchIndex] RemoveComponent: Component $componentId does not exist',
+      );
+      return;
+    }
+    state.components.remove(componentId);
   }
 
   /// Validate post-state invariants after all patches are applied.

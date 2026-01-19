@@ -2,6 +2,7 @@ import 'dart:ui' show Offset, Size;
 
 import 'package:flutter/foundation.dart';
 
+import '../models/component_def.dart';
 import '../models/editor_document.dart';
 import '../models/frame.dart';
 import '../models/node.dart';
@@ -616,5 +617,90 @@ extension EditorDocumentStoreExtensions on EditorDocumentStore {
     }
 
     return null;
+  }
+
+  // ===========================================================================
+  // Component Operations
+  // ===========================================================================
+
+  /// Count how many instances reference a component.
+  int countInstancesOfComponent(String componentId) {
+    return document.nodes.values.where((node) {
+      if (node.type != NodeType.instance) return false;
+      final props = node.props as InstanceProps;
+      return props.componentId == componentId;
+    }).length;
+  }
+
+  /// Create a new component from pre-built nodes.
+  ///
+  /// IMPORTANT: Nodes must be fully formed with source-namespaced IDs
+  /// (e.g., `comp_123::btn_root`). Each node must have:
+  /// - `sourceComponentId` set to the component ID
+  /// - `templateUid` set to a unique identifier within the component
+  ///
+  /// Order: InsertNode for all nodes FIRST, then InsertComponent.
+  void createComponent({
+    required ComponentDef component,
+    required List<Node> nodes,
+  }) {
+    applyPatches([
+      // Nodes first - component references rootNodeId
+      for (final node in nodes) InsertNode(node),
+      // Component second
+      InsertComponent(component),
+    ], label: 'Create component');
+  }
+
+  /// Delete a component and all its source nodes.
+  ///
+  /// Throws [StateError] if any instances reference this component.
+  /// The caller should check [countInstancesOfComponent] first if they
+  /// want to show a user-friendly message.
+  void deleteComponent(String componentId) {
+    final instanceCount = countInstancesOfComponent(componentId);
+    if (instanceCount > 0) {
+      throw StateError(
+        'Cannot delete component "$componentId": '
+        'referenced by $instanceCount instance(s)',
+      );
+    }
+
+    // Collect all nodes owned by this component
+    final ownedNodeIds = document.nodes.entries
+        .where((e) => e.value.sourceComponentId == componentId)
+        .map((e) => e.key)
+        .toList();
+
+    applyPatches([
+      RemoveComponent(componentId),
+      // Delete owned nodes (no detach needed - they're component-internal)
+      for (final nodeId in ownedNodeIds) DeleteNode(nodeId),
+    ], label: 'Delete component');
+  }
+
+  /// Create an instance of a component and add it to a parent.
+  ///
+  /// Throws [ArgumentError] if the component doesn't exist.
+  void instantiateComponent({
+    required String componentId,
+    required String parentId,
+    String? instanceName,
+    int index = -1,
+  }) {
+    final component = document.components[componentId];
+    if (component == null) {
+      throw ArgumentError('Component "$componentId" not found');
+    }
+
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    final instanceNode = Node(
+      id: 'inst_$timestamp',
+      name: instanceName ?? component.name,
+      type: NodeType.instance,
+      props: InstanceProps(componentId: componentId),
+    );
+
+    addNode(instanceNode, parentId: parentId, index: index);
   }
 }

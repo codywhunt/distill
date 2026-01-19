@@ -103,6 +103,11 @@ class SceneChangeSet {
 
       // Frame removal
       RemoveFrame(:final frameId) => SceneChangeSet(frameDirty: {frameId}),
+
+      // Component operations don't affect scene directly
+      // (instances are separate nodes that reference components)
+      InsertComponent() => const SceneChangeSet(),
+      RemoveComponent() => const SceneChangeSet(),
     };
   }
 

@@ -4,7 +4,7 @@
 
 **Roadmap**: [components-v2-roadmap.md](./components-v2-roadmap.md)
 **Started**: 2026-01-18
-**Current Phase**: Phase 2 Complete - Ready for Phase 3
+**Current Phase**: Phase 3 Complete - Ready for Phase 4
 
 ---
 
@@ -16,7 +16,7 @@
 | Phase 1: Slots That Work | ✅ Complete | 2026-01-18 | 2026-01-18 | 48 tests passing (43 unit + 5 integration) |
 | Phase 1.5: Component Navigation | ✅ Complete | 2026-01-18 | 2026-01-18 | 19 tests passing (6 unit + 13 integration) |
 | Phase 2: Parameters | ✅ Complete | 2026-01-18 | 2026-01-18 | 85 tests passing (35 unit + 12 expansion + 8 integration) |
-| Phase 3: Component Library | Not Started | - | - | - |
+| Phase 3: Component Library | ✅ Complete | 2026-01-18 | 2026-01-18 | 22 tests passing |
 | Phase 4: Variants | Not Started | - | - | - |
 
 ---
@@ -336,33 +336,92 @@ Failed: 0
 
 ## Phase 3: Component Library Panel
 
-### Status: Not Started
+### Status: ✅ Complete
 
 ### Tasks Completed
-- [ ] Component Library panel widget
-- [ ] Drag-to-instantiate
-- [ ] "Create component from selection"
-- [ ] Component search/filter
-- [ ] Show component sets grouped
+- [x] Add `InsertComponent` and `RemoveComponent` patch operations
+- [x] Handle new patches in `patch_applier.dart` with rootNodeId assertion
+- [x] Handle new patches in `patch_validator.dart`, `scene_change_set.dart`, `undo_redo.dart`
+- [x] Add store helpers (`createComponent`, `deleteComponent`, `countInstancesOfComponent`, `instantiateComponent`)
+- [x] Create `CreateComponentCommand` with safe ID mapping
+- [x] Component Library panel widget with search/filter
+- [x] Component Library item widget with insert/delete actions
+- [x] Integrate ComponentLibraryPanel into canvas_module.dart
+- [x] Delete component blocked when instances exist
+- [x] Click component to navigate to component frame
+- [x] "+" button to insert instance in current frame
 
 ### Test Results
 ```
-Total: -
-Passed: -
-Failed: -
+Total: 22
+Passed: 22
+Failed: 0
+Success: true
 ```
 
+**Integration Tests (component_library_test.dart)**:
+1. createComponent inserts nodes then component atomically
+2. deleteComponent blocked when instances exist
+3. deleteComponent removes component and owned nodes
+4. instantiateComponent creates valid instance
+5. instantiateComponent with custom name
+6. countInstancesOfComponent returns correct count
+7. CreateComponentCommand creates component from single selected node
+8. CreateComponentCommand generates unique IDs despite duplicate names
+9. CreateComponentCommand fails with empty selection
+10. CreateComponentCommand fails with multiple selection
+11. CreateComponentCommand fails with instance selection
+12. CreateComponentCommand fails with root node (no parent)
+13. CreateComponentCommand preserves custom component name
+14. CreateComponentCommand uses node name as default component name
+15. instance replaces original at same position
+16. InsertComponent/RemoveComponent round-trip
+17. InsertComponent serialization round-trip
+18. RemoveComponent serialization round-trip
+19. search filters components by name (case-insensitive)
+20. componentNodeId generates correct format
+21. component nodes have sourceComponentId set
+
 ### Decisions Made During Implementation
-_Document any decisions made that weren't covered in the roadmap._
+
+1. **Patch ordering and atomicity**: Nodes must be inserted BEFORE component definition. The patch applier validates this with a debug assertion on `rootNodeId` existence. The `createComponent` store helper ensures correct ordering.
+
+2. **Component deletion safety**: `deleteComponent` throws `StateError` if any instances reference the component. The caller must delete instances first. The UI shows a blocking dialog explaining this.
+
+3. **Safe cloning with counter-based IDs**: `CreateComponentCommand` uses a counter-based local ID generator (`n0`, `n1`, ...) rather than name-derived IDs. This prevents collisions when nodes have duplicate names. Each node's `templateUid` equals its generated localId for stable identity.
+
+4. **Single-root selection rule for v1**: `CreateComponentCommand` requires exactly ONE selected node. This simplifies the cloning logic and avoids complex multi-root handling. The command throws `ArgumentError` with clear explanation if selection is invalid.
+
+5. **Insert button instead of drag-to-instantiate**: v1 uses a "+" button in `ComponentLibraryItem` to insert instances into the focused frame's root. Drag-to-instantiate with a full overlay system is deferred to a future iteration.
+
+6. **Navigation uses Phase 1.5 infrastructure**: Clicking a component in the library calls `navigateToComponent()` which creates a component frame if needed and focuses it.
+
+7. **Component nodes marked as compilation-dirty**: When nodes or components change, the scene must be recompiled. InsertComponent/RemoveComponent return empty `SceneChangeSet` because the actual visual impact comes from instances (separate nodes).
+
+8. **Undo support**: InsertComponent/RemoveComponent are invertible. InsertComponent inverts to RemoveComponent(component.id), and RemoveComponent inverts to InsertComponent(doc.components[componentId]!).
 
 ### Lessons Learned
-_What worked well? What was harder than expected?_
+
+- **Sealed class exhaustiveness requires updating all switch statements**: Adding new `PatchOp` subclasses required updating switches in `patch_validator.dart`, `scene_change_set.dart`, and `undo_redo.dart`. The compiler catches these, but it's easy to miss them initially.
+
+- **`componentNodeId` function already existed**: The helper function was already defined in `node.dart`, so duplicating it in `create_component_command.dart` caused import conflicts. The test file's barrel import exposed the duplicate.
+
+- **Counter-based IDs simpler than UUID**: Rather than adding a UUID dependency, using a counter within `CreateComponentCommand` produces deterministic, readable IDs (`n0`, `n1`, ...) that are guaranteed unique within a single command execution.
+
+- **Test patterns from existing integration tests**: Following the patterns in `component_navigation_test.dart` and `editor_document_store_test.dart` made test creation straightforward.
 
 ### Blockers Encountered
-_Any blockers and how they were resolved._
+None.
 
 ### Notes for Phase 4
-_Anything the next phase needs to know._
+
+1. **Component Library panel is ready**: The UI structure supports grouping components, which Phase 4 will use for variant sets.
+
+2. **Component creation from selection works**: Users can select a node and create a component, which replaces the selection with an instance. This pattern can be extended for "Create variant" actions.
+
+3. **Delete protection is in place**: Components with instances cannot be deleted. This same pattern should apply to variant sets.
+
+4. **Search filter available**: The library already filters by name, which will be useful when many variants exist.
 
 ---
 
@@ -425,6 +484,7 @@ _Any performance considerations discovered during implementation._
 
 | Date | Phase | Change | Author |
 |------|-------|--------|--------|
+| 2026-01-18 | Phase 3 | Completed Phase 3: Component Library Panel - InsertComponent/RemoveComponent patches, store helpers, CreateComponentCommand, ComponentLibraryPanel/Item widgets, 22 tests passing | Claude |
 | 2026-01-18 | Phase 2 | Fixed cache invalidation: component source node changes now propagate to all frames containing instances of that component via `_onStoreChanged()` in CanvasState | Claude |
 | 2026-01-18 | Phase 2 | Completed Phase 2: Parameters - ComponentParamDef model, ParamBinding, typed params (string/number/boolean/color/enum), pre-indexed binding resolution, property panel UI with grouping, override indicators, backwards-compatible with legacy overrides, 85 tests passing | Claude |
 | 2026-01-18 | Phase 1.5 | Completed Phase 1.5: Component Navigation - FrameKind enum, Frame.componentId, navigateToComponent, createComponentFrame, clickable instance badges, 26 tests passing | Claude |

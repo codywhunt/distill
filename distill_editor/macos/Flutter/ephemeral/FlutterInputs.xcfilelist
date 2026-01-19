@@ -985,7 +985,7 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/spacing.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/theme.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/typography.dart
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/DOES_NOT_EXIST_RERUN_FOR_WILDCARD180695292
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/DOES_NOT_EXIST_RERUN_FOR_WILDCARD919014782
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-cosmicorange.svg
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-deepblue.svg
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-silver.svg
@@ -1000,6 +1000,8 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/canvas_module.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/canvas_state.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/mock_frames.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/widgets/component_library_item.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/widgets/component_library_panel.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/widgets/device_selector_button.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/widgets/frame_list_item.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/modules/canvas/widgets/frame_list_panel.dart
@@ -1056,6 +1058,7 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/widgets/selection_overlay.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/widgets/snap_guides_overlay.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/canvas/widgets/widgets.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/commands/create_component_command.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/compiler/compiler.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/compiler/outline_compiler.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/dsl/dsl.dart
@@ -1066,6 +1069,7 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/layout/layout.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/layout/layout_validation.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/models/component_def.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/models/component_param.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/models/default_theme.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/models/editor_document.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/lib/src/free_design/models/frame.dart

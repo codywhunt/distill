@@ -29,6 +29,8 @@ class PatchApplier {
       ReplaceNode() => _applyReplaceNode(doc, op),
       InsertFrame() => _applyInsertFrame(doc, op),
       RemoveFrame() => _applyRemoveFrame(doc, op),
+      InsertComponent() => _applyInsertComponent(doc, op),
+      RemoveComponent() => _applyRemoveComponent(doc, op),
     };
   }
 
@@ -138,6 +140,26 @@ class PatchApplier {
 
   EditorDocument _applyRemoveFrame(EditorDocument doc, RemoveFrame op) {
     return doc.withoutFrame(op.frameId);
+  }
+
+  // ===========================================================================
+  // Component Operations
+  // ===========================================================================
+
+  EditorDocument _applyInsertComponent(EditorDocument doc, InsertComponent op) {
+    // Debug assertion: rootNodeId must exist before inserting component.
+    // This ensures correct patch ordering (nodes first, then component).
+    assert(
+      doc.nodes.containsKey(op.component.rootNodeId),
+      'Component rootNodeId "${op.component.rootNodeId}" must exist before '
+      'InsertComponent. Ensure nodes are inserted before the component.',
+    );
+
+    return doc.withComponent(op.component);
+  }
+
+  EditorDocument _applyRemoveComponent(EditorDocument doc, RemoveComponent op) {
+    return doc.withoutComponent(op.componentId);
   }
 
   // ===========================================================================
