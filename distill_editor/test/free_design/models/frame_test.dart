@@ -80,6 +80,137 @@ void main() {
     });
   });
 
+  group('Frame Kind', () {
+    test('design frame has FrameKind.design', () {
+      final now = DateTime.now();
+      final frame = Frame(
+        id: 'f_test',
+        name: 'Test Frame',
+        rootNodeId: 'n_root',
+        canvas: const CanvasPlacement(
+          position: Offset.zero,
+          size: Size(375, 812),
+        ),
+        kind: FrameKind.design,
+        componentId: null,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      expect(frame.kind, FrameKind.design);
+      expect(frame.componentId, isNull);
+    });
+
+    test('component frame has FrameKind.component', () {
+      final now = DateTime.now();
+      final frame = Frame(
+        id: 'f_comp',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        canvas: const CanvasPlacement(
+          position: Offset(100, 200),
+          size: Size(200, 50),
+        ),
+        kind: FrameKind.component,
+        componentId: 'comp_button',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      expect(frame.kind, FrameKind.component);
+      expect(frame.componentId, 'comp_button');
+    });
+
+    test('JSON round-trip preserves kind and componentId', () {
+      final createdAt = DateTime(2024, 1, 15, 10, 30);
+      final updatedAt = DateTime(2024, 1, 15, 14, 45);
+      final frame = Frame(
+        id: 'f_comp',
+        name: 'Button Component',
+        rootNodeId: 'comp_button::btn_root',
+        canvas: const CanvasPlacement(
+          position: Offset(50, 100),
+          size: Size(200, 50),
+        ),
+        kind: FrameKind.component,
+        componentId: 'comp_button',
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
+
+      final json = frame.toJson();
+      final encoded = jsonEncode(json);
+      final decoded = jsonDecode(encoded) as Map<String, dynamic>;
+      final restored = Frame.fromJson(decoded);
+
+      expect(restored.kind, FrameKind.component);
+      expect(restored.componentId, 'comp_button');
+    });
+
+    test('copyWith works with kind and componentId', () {
+      final now = DateTime.now();
+      final frame = Frame(
+        id: 'f_test',
+        name: 'Original',
+        rootNodeId: 'n_root',
+        canvas: const CanvasPlacement(
+          position: Offset.zero,
+          size: Size(375, 812),
+        ),
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      expect(frame.kind, FrameKind.design);
+      expect(frame.componentId, isNull);
+
+      final modified = frame.copyWith(
+        kind: FrameKind.component,
+        componentId: 'comp_button',
+      );
+
+      expect(modified.kind, FrameKind.component);
+      expect(modified.componentId, 'comp_button');
+      expect(frame.kind, FrameKind.design); // Original unchanged
+    });
+
+    test('JSON without kind field defaults to design', () {
+      final json = {
+        'id': 'f_test',
+        'name': 'Test',
+        'rootNodeId': 'n_root',
+        'canvas': {
+          'position': {'x': 0.0, 'y': 0.0},
+          'size': {'width': 375.0, 'height': 812.0},
+        },
+        'createdAt': '2024-01-15T10:30:00.000',
+        'updatedAt': '2024-01-15T10:30:00.000',
+        // No 'kind' or 'componentId' fields
+      };
+
+      final frame = Frame.fromJson(json);
+      expect(frame.kind, FrameKind.design);
+      expect(frame.componentId, isNull);
+    });
+
+    test('kind defaults to design when not specified in constructor', () {
+      final now = DateTime.now();
+      final frame = Frame(
+        id: 'f_test',
+        name: 'Test',
+        rootNodeId: 'n_root',
+        canvas: const CanvasPlacement(
+          position: Offset.zero,
+          size: Size(375, 812),
+        ),
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      expect(frame.kind, FrameKind.design);
+    });
+  });
+
   group('CanvasPlacement', () {
     test('JSON round-trip', () {
       const canvas = CanvasPlacement(

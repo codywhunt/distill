@@ -231,12 +231,24 @@ class EditorDocumentStore extends ChangeNotifier {
   }
 
   /// Get the frame containing a node.
+  ///
+  /// For slot content nodes (which have [ownerInstanceId] but aren't in the
+  /// frame's subtree), this follows the ownership chain to find the frame.
   String? getFrameForNode(String nodeId) {
+    // First check if the node is directly in a frame's subtree
     for (final frame in _document.frames.values) {
       if (_document.getSubtree(frame.rootNodeId).contains(nodeId)) {
         return frame.id;
       }
     }
+
+    // If not found, check if this is a slot content node (has ownerInstanceId)
+    final node = _document.nodes[nodeId];
+    if (node?.ownerInstanceId != null) {
+      // Recursively find the frame containing the owner instance
+      return getFrameForNode(node!.ownerInstanceId!);
+    }
+
     return null;
   }
 
@@ -269,8 +281,12 @@ extension EditorDocumentStoreExtensions on EditorDocumentStore {
   }
 
   /// Remove a node and all its descendants.
+  ///
+  /// If the node is an instance, also removes all nodes where
+  /// `ownerInstanceId == nodeId` (slot content cleanup).
   void removeNode(String nodeId) {
     final patches = <PatchOp>[];
+    final node = document.nodes[nodeId];
 
     // Collect all descendants (depth-first, children before parents)
     final subtree = document.getSubtree(nodeId).toList();
@@ -283,9 +299,9 @@ extension EditorDocumentStoreExtensions on EditorDocumentStore {
 
     // Detach all internal parent-child relationships (for proper undo)
     for (final id in subtree) {
-      final node = document.nodes[id];
-      if (node != null) {
-        for (final childId in node.childIds) {
+      final subtreeNode = document.nodes[id];
+      if (subtreeNode != null) {
+        for (final childId in subtreeNode.childIds) {
           patches.add(DetachChild(parentId: id, childId: childId));
         }
       }
@@ -296,7 +312,94 @@ extension EditorDocumentStoreExtensions on EditorDocumentStore {
       patches.add(DeleteNode(id));
     }
 
+    // If this is an instance, clean up owned slot content
+    if (node?.type == NodeType.instance) {
+      patches.addAll(_collectOwnedSlotContentPatches(nodeId));
+    }
+
     applyPatches(patches, label: 'Delete node');
+  }
+
+  /// Collect all node IDs owned by an instance (slot content).
+  List<String> collectOwnedSubtrees(String instanceId) {
+    final result = <Set<String>>{}; // Use Set to deduplicate
+    for (final node in document.nodes.values) {
+      if (node.ownerInstanceId == instanceId) {
+        result.add(document.getSubtree(node.id));
+      }
+    }
+    // Flatten and deduplicate
+    return result.expand((s) => s).toSet().toList();
+  }
+
+  /// Generate patches to delete all slot content owned by an instance.
+  List<PatchOp> _collectOwnedSlotContentPatches(String instanceId) {
+    final patches = <PatchOp>[];
+    final ownedIds = collectOwnedSubtrees(instanceId);
+
+    // Detach internal relationships
+    for (final id in ownedIds) {
+      final node = document.nodes[id];
+      if (node != null) {
+        for (final childId in node.childIds) {
+          patches.add(DetachChild(parentId: id, childId: childId));
+        }
+      }
+    }
+
+    // Delete nodes (children first)
+    for (final id in ownedIds.reversed) {
+      patches.add(DeleteNode(id));
+    }
+
+    return patches;
+  }
+
+  /// Clear slot content for an instance.
+  ///
+  /// Deletes the content nodes and removes the slot assignment.
+  void clearSlotContent(String instanceId, String slotName) {
+    final node = document.nodes[instanceId];
+    if (node?.props is! InstanceProps) return;
+
+    final props = node!.props as InstanceProps;
+    final assignment = props.slots[slotName];
+
+    if (assignment?.rootNodeId == null) return;
+
+    final patches = <PatchOp>[];
+
+    // Delete old content subtree
+    final oldRootId = assignment!.rootNodeId!;
+    final oldSubtree = document.getSubtree(oldRootId).toList();
+
+    // Detach internal relationships
+    for (final id in oldSubtree) {
+      final subtreeNode = document.nodes[id];
+      if (subtreeNode != null) {
+        for (final childId in subtreeNode.childIds) {
+          patches.add(DetachChild(parentId: id, childId: childId));
+        }
+      }
+    }
+
+    // Delete nodes
+    for (final id in oldSubtree.reversed) {
+      patches.add(DeleteNode(id));
+    }
+
+    // Update instance props - remove slot assignment
+    final newSlots = Map<String, SlotAssignment>.from(props.slots);
+    newSlots.remove(slotName);
+    patches.add(SetProp(
+      id: instanceId,
+      path: '/props/slots',
+      value: newSlots.isEmpty
+          ? null
+          : newSlots.map((k, v) => MapEntry(k, v.toJson())),
+    ));
+
+    applyPatches(patches, label: 'Clear slot');
   }
 
   /// Move a node to a new parent.
@@ -457,5 +560,61 @@ extension EditorDocumentStoreExtensions on EditorDocumentStore {
       InsertNode(rootNode),
       InsertFrame(frame),
     ], label: 'Create frame');
+  }
+
+  /// Create a frame for editing a component.
+  ///
+  /// Component frames share the component's root node - they don't create
+  /// a new root node. The frame's `rootNodeId` points to the component's
+  /// `rootNodeId`.
+  ///
+  /// Throws [ArgumentError] if the component doesn't exist.
+  Frame createComponentFrame({
+    required String componentId,
+    required Offset position,
+  }) {
+    final component = document.components[componentId];
+    if (component == null) {
+      throw ArgumentError('Component not found: $componentId');
+    }
+
+    // Get size from component root node, or use default
+    final rootNode = document.nodes[component.rootNodeId];
+    final size = _getNodeSize(rootNode) ?? const Size(375, 400);
+
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    final now = DateTime.now();
+
+    final frame = Frame(
+      id: 'frame_comp_$timestamp',
+      name: component.name,
+      rootNodeId: component.rootNodeId, // Share component's root node
+      canvas: CanvasPlacement(position: position, size: size),
+      kind: FrameKind.component,
+      componentId: componentId,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    applyPatches([
+      InsertFrame(frame),
+    ], label: 'Create component frame');
+
+    return frame;
+  }
+
+  /// Get the size of a node from its layout, or null if not determinable.
+  Size? _getNodeSize(Node? node) {
+    if (node == null) return null;
+
+    final width = node.layout.size.width;
+    final height = node.layout.size.height;
+
+    // Only return size if both dimensions are fixed values
+    if (width is AxisSizeFixed && height is AxisSizeFixed) {
+      return Size(width.value, height.value);
+    }
+
+    return null;
   }
 }

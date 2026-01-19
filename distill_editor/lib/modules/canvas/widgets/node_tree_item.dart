@@ -27,6 +27,7 @@ class NodeTreeItem extends StatelessWidget {
     this.onHoverEnter,
     this.onHoverExit,
     this.onToggleExpand,
+    this.onGoToComponent,
     super.key,
   });
 
@@ -63,9 +64,12 @@ class NodeTreeItem extends StatelessWidget {
   /// Called when the expand/collapse chevron is tapped.
   final VoidCallback? onToggleExpand;
 
+  /// Called when the instance badge is clicked (to navigate to component).
+  final VoidCallback? onGoToComponent;
+
   @override
   Widget build(BuildContext context) {
-    final isInstance = expandedNode.patchTargetId == null;
+    final isInstance = expandedNode.origin?.kind == OriginKind.instanceRoot;
     final showChevron = isExpanded != null;
 
     // Calculate indentation: 8px base + 12px per level
@@ -158,24 +162,59 @@ class NodeTreeItem extends StatelessWidget {
                   ),
                 ),
 
-                // Instance badge
+                // Instance badge (clickable to go to component)
                 if (isInstance) ...[
                   const SizedBox(width: 4),
                   Tooltip(
-                    message: 'Component instance (children hidden)',
+                    message: onGoToComponent != null
+                        ? 'Click to edit component'
+                        : 'Component instance',
+                    child: GestureDetector(
+                      onTap: onGoToComponent,
+                      child: MouseRegion(
+                        cursor: onGoToComponent != null
+                            ? SystemMouseCursors.click
+                            : SystemMouseCursors.basic,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF9333EA).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: const Icon(
+                            LucideIcons.component200,
+                            size: 12,
+                            color: Color(0xFF9333EA),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // Slot content badge
+                if (expandedNode.origin?.kind == OriginKind.slotContent) ...[
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message:
+                        'Slot: ${expandedNode.origin?.slotOrigin?.slotName ?? 'unknown'}',
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 4,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF9333EA).withValues(alpha: 0.1),
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3),
                       ),
                       child: const Icon(
-                        LucideIcons.component200,
+                        LucideIcons.layoutGrid200,
                         size: 12,
-                        color: Color(0xFF9333EA),
+                        color: Color(0xFF2563EB),
                       ),
                     ),
                   ),

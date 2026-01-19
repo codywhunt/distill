@@ -25,18 +25,26 @@ class LlmModel {
   }
 
   // Anthropic (via OpenRouter)
+  static const claudeOpus = LlmModel(
+    'anthropic/claude-opus-4.5',
+    'Claude Opus 4.5',
+  );
   static const claudeSonnet = LlmModel(
-    'anthropic/claude-sonnet-4',
-    'Claude Sonnet 4',
+    'anthropic/claude-sonnet-4.5',
+    'Claude Sonnet 4.5',
   );
   static const claudeHaiku = LlmModel(
-    'anthropic/claude-haiku-4',
-    'Claude Haiku 4',
+    'anthropic/claude-haiku-4.5',
+    'Claude Haiku 4.5',
   );
 
   // OpenAI (via OpenRouter)
-  static const gpt4o = LlmModel('openai/gpt-4o', 'GPT-4o');
-  static const gpt4oMini = LlmModel('openai/gpt-4o-mini', 'GPT-4o Mini');
+  static const gpt52 = LlmModel('openai/gpt-5.2', 'GPT-5.2');
+  static const gpt51CodexMini = LlmModel(
+    'openai/gpt-5.1-codex-mini',
+    'GPT-5.1 Codex Mini',
+  );
+  static const gpt52Codex = LlmModel('openai/gpt-5.2-codex', 'GPT-5.2 Codex');
 
   // Google Gemini (via OpenRouter)
   static const geminiPro = LlmModel(
@@ -49,25 +57,26 @@ class LlmModel {
   );
 
   // Meta Llama (via OpenRouter)
-  static const llama4Maverick = LlmModel(
-    'meta-llama/llama-4-maverick',
-    'Llama 4 Maverick',
+  static const grokCodeFast1 = LlmModel(
+    'x-ai/grok-code-fast-1',
+    'xAI Grok Code Fast 1',
   );
-  static const llama33_70b = LlmModel(
-    'meta-llama/llama-3.3-70b-instruct',
-    'Llama 3.3 70B',
-  );
+  static const gptOss120b = LlmModel('openai/gpt-oss-120b', 'GPT-OSS 120B');
+  static const glm47 = LlmModel('z-ai/glm-4.7', 'GLM 4.7');
 
   /// All available preset models.
   static const all = [
+    claudeOpus,
     claudeSonnet,
     claudeHaiku,
-    gpt4o,
-    gpt4oMini,
+    gpt52,
+    gpt51CodexMini,
+    gpt52Codex,
     geminiPro,
     geminiFlash,
-    llama4Maverick,
-    llama33_70b,
+    grokCodeFast1,
+    gptOss120b,
+    glm47,
   ];
 
   /// Default model when none specified.

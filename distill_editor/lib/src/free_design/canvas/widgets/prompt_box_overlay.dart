@@ -32,15 +32,11 @@ void _log(String message) {
 class PromptBoxOverlay extends StatefulWidget {
   const PromptBoxOverlay({
     required this.state,
-    required this.aiService,
     required this.onError,
     super.key,
   });
 
   final CanvasState state;
-
-  /// AI service for frame generation. Null if not configured.
-  final FreeDesignAiService? aiService;
 
   /// Called when an error occurs.
   final void Function(String message) onError;
@@ -52,11 +48,31 @@ class PromptBoxOverlay extends StatefulWidget {
 class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
   final _textController = TextEditingController();
   final _focusNode = FocusNode();
-  LlmModel _selectedModel = LlmModel.geminiFlash;
+  LlmModel _selectedModel = LlmModel.defaultModel;
   bool _isHovered = false;
 
   /// Track active generation count for UI feedback (spinner in action row).
   int _activeGenerations = 0;
+
+  /// Cached AI service for the current model.
+  FreeDesignAiService? _aiService;
+
+  /// Get or create the AI service for the selected model.
+  FreeDesignAiService? _getAiService() {
+    // Create service lazily with the currently selected model
+    _aiService ??= createAiServiceWithModel(_selectedModel);
+    return _aiService;
+  }
+
+  /// Update the selected model and clear the cached service.
+  void _setSelectedModel(LlmModel model) {
+    if (model != _selectedModel) {
+      setState(() {
+        _selectedModel = model;
+        _aiService = null; // Clear cache so next call creates new service
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -89,8 +105,9 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
     final prompt = _textController.text.trim();
     if (prompt.isEmpty) return;
 
-    if (widget.aiService == null) {
-      widget.onError('AI service not configured. Set API key via environment.');
+    final aiService = _getAiService();
+    if (aiService == null) {
+      widget.onError('AI service not configured. Set OPENROUTER_API_KEY environment variable.');
       return;
     }
 
@@ -112,11 +129,12 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
         // New frame generation
         await _generateNewFrame(
           prompt,
+          aiService,
           existingFrameId: selectedFrames.firstOrNull,
         );
       } else {
         // Update existing frame/node
-        await _updateSelection(prompt, selectedFrames, selectedNodes);
+        await _updateSelection(prompt, aiService, selectedFrames, selectedNodes);
       }
     } catch (e) {
       widget.onError('Generation failed: $e');
@@ -165,7 +183,8 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
   }
 
   Future<void> _generateNewFrame(
-    String prompt, {
+    String prompt,
+    FreeDesignAiService aiService, {
     String? existingFrameId,
   }) async {
     // If replacing an existing blank frame, use its position/size
@@ -232,7 +251,7 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
       _log('generateViaDsl: Starting generation for prompt: "$prompt"');
 
       // Use token-efficient DSL generation (~75% fewer tokens)
-      final result = await widget.aiService!.generateViaDsl(
+      final result = await aiService.generateViaDsl(
         prompt: prompt,
         position: position,
         size: size,
@@ -247,7 +266,7 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
         RemoveFrame(frameId),
         DeleteNode(rootNodeId),
       ]);
-      widget.aiService!.applyResult(widget.state.store, result);
+      aiService.applyResult(widget.state.store, result);
 
       // Select the new frame
       widget.state.select(FrameTarget(result.frame.id));
@@ -264,6 +283,7 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
 
   Future<void> _updateSelection(
     String prompt,
+    FreeDesignAiService aiService,
     Set<String> selectedFrames,
     Set<NodeTarget> selectedNodes,
   ) async {
@@ -312,7 +332,7 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
       _log('editViaPatches: Frame: $frameId, Focus nodes: $focusNodeIds');
 
       // Use token-efficient PatchOps editing (~98% fewer tokens)
-      final patches = await widget.aiService!.editViaPatches(
+      final patches = await aiService.editViaPatches(
         document: widget.state.document,
         frameId: frameId,
         focusNodeIds: focusNodeIds,
@@ -399,7 +419,7 @@ class _PromptBoxOverlayState extends State<PromptBoxOverlay> {
                               currentModel: _selectedModel,
                               onModelChanged: (model) {
                                 if (model != null) {
-                                  setState(() => _selectedModel = model);
+                                  _setSelectedModel(model);
                                 }
                               },
                               onSubmit: _handleSubmit,

@@ -7,6 +7,80 @@ import '../models/node_props.dart';
 import '../models/node_style.dart';
 import '../models/node_type.dart';
 
+/// Categorizes where an expanded node came from.
+///
+/// Makes UI logic trivial (tree rendering, prop panel, context menus).
+enum OriginKind {
+  /// Regular node in a frame (not from component).
+  frameNode,
+
+  /// The instance node itself (the root that references a component).
+  instanceRoot,
+
+  /// A node inside a component (not directly editable).
+  componentChild,
+
+  /// Content injected into a slot (editable, owned by instance).
+  slotContent,
+
+  /// Error placeholder (cycle detected, missing component, etc.).
+  errorPlaceholder,
+}
+
+/// Tracks slot injection origin for expanded nodes.
+class SlotOrigin {
+  final String slotName;
+  final String instanceId;
+
+  const SlotOrigin({required this.slotName, required this.instanceId});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SlotOrigin &&
+          slotName == other.slotName &&
+          instanceId == other.instanceId;
+
+  @override
+  int get hashCode => Object.hash(slotName, instanceId);
+}
+
+/// Metadata about where an expanded node came from.
+///
+/// This enables UI to make decisions about editability, display badges,
+/// context menu options, etc.
+class ExpandedNodeOrigin {
+  /// The kind of origin (frame node, component child, etc.).
+  final OriginKind kind;
+
+  /// Which component this node came from (if any).
+  final String? componentId;
+
+  /// The stable template UID within the component (for param bindings).
+  final String? componentTemplateUid;
+
+  /// The path of instance IDs from root to this node.
+  ///
+  /// For example, if instance A contains instance B which contains this node,
+  /// instancePath would be ['instA', 'instB'].
+  final List<String> instancePath;
+
+  /// Whether any overrides were applied to this node.
+  final bool isOverridden;
+
+  /// If this node came from slot injection, tracks the slot info.
+  final SlotOrigin? slotOrigin;
+
+  const ExpandedNodeOrigin({
+    required this.kind,
+    this.componentId,
+    this.componentTemplateUid,
+    this.instancePath = const [],
+    this.isOverridden = false,
+    this.slotOrigin,
+  });
+}
+
 /// A flattened view of the scene with instances expanded.
 ///
 /// The expanded scene provides a read-only, fully-resolved view where:
@@ -30,11 +104,19 @@ class ExpandedScene {
   /// cannot be edited to prevent data corruption).
   final Map<String, String?> patchTarget;
 
+  /// Index of slot content roots by instance expanded ID.
+  ///
+  /// Enables O(1) lookup for layer tree display. Built during expansion.
+  /// Key is the instance's expanded ID, value is list of slot content root
+  /// expanded IDs that should appear as virtual children of that instance.
+  final Map<String, List<String>> slotChildrenByInstance;
+
   const ExpandedScene({
     required this.frameId,
     required this.rootId,
     required this.nodes,
     required this.patchTarget,
+    this.slotChildrenByInstance = const {},
   });
 
   /// Get the patch target for an expanded node.
@@ -49,8 +131,11 @@ class ExpandedScene {
   /// Get the owning instance ID for a namespaced node.
   ///
   /// Returns the first segment of a namespaced ID, or null if not namespaced.
-  /// For `inst1::btn`, returns `inst1`.
-  /// For `inst1::nested::child`, returns `inst1`.
+  /// For `inst1::comp_button::btn_root`, returns `inst1`.
+  /// For `inst1::inst2::comp_button::btn_root`, returns `inst1`.
+  ///
+  /// This works because instance IDs are simple strings (no `::`) while
+  /// component node IDs contain `::` (e.g., `comp_button::btn_root`).
   String? getOwningInstance(String expandedId) {
     if (!isInsideInstance(expandedId)) return null;
     return expandedId.split('::').first;
@@ -111,6 +196,11 @@ class ExpandedNode {
   /// Computed bounds after layout pass (null until layout runs).
   Rect? bounds;
 
+  /// Origin metadata for UI decisions (editability, badges, context menus).
+  ///
+  /// Note: Excluded from equality/hashCode as it's metadata, not identity.
+  final ExpandedNodeOrigin? origin;
+
   ExpandedNode({
     required this.id,
     required this.patchTargetId,
@@ -120,23 +210,31 @@ class ExpandedNode {
     required this.style,
     required this.props,
     this.bounds,
+    this.origin,
   });
 
   /// Create from a document Node.
+  ///
+  /// If [patchTargetId] is not provided, defaults to `node.id`.
+  /// To explicitly set patchTargetId to null (for non-editable nodes),
+  /// pass [editableTarget] = false.
   factory ExpandedNode.fromNode(
     Node node, {
     String? expandedId,
     String? patchTargetId,
+    bool editableTarget = true,
     List<String>? childIds,
+    ExpandedNodeOrigin? origin,
   }) {
     return ExpandedNode(
       id: expandedId ?? node.id,
-      patchTargetId: patchTargetId ?? node.id,
+      patchTargetId: editableTarget ? (patchTargetId ?? node.id) : null,
       type: node.type,
       childIds: childIds ?? node.childIds,
       layout: node.layout,
       style: node.style,
       props: node.props,
+      origin: origin,
     );
   }
 
@@ -150,6 +248,7 @@ class ExpandedNode {
     NodeStyle? style,
     NodeProps? props,
     Rect? bounds,
+    ExpandedNodeOrigin? origin,
   }) {
     return ExpandedNode(
       id: id ?? this.id,
@@ -160,6 +259,7 @@ class ExpandedNode {
       style: style ?? this.style,
       props: props ?? this.props,
       bounds: bounds ?? this.bounds,
+      origin: origin ?? this.origin,
     );
   }
 
@@ -167,6 +267,8 @@ class ExpandedNode {
   bool get isInsideInstance => id.contains('::');
 
   /// Get the owning instance ID, or null if not inside an instance.
+  ///
+  /// For `inst1::comp_button::btn_root`, returns `inst1`.
   String? get owningInstance {
     if (!isInsideInstance) return null;
     return id.split('::').first;

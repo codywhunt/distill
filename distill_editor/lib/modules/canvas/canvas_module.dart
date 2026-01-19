@@ -3,7 +3,6 @@ import 'package:distill_ds/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../src/free_design/ai/ai_service.dart';
 import '../../src/free_design/canvas/widgets/free_design_canvas.dart';
 import '../../src/free_design/canvas/widgets/prompt_box_overlay.dart';
 import '../../src/free_design/properties/property_panel.dart';
@@ -78,14 +77,10 @@ class CanvasCenterContent extends StatefulWidget {
 class _CanvasCenterContentState extends State<CanvasCenterContent> {
   late final InfiniteCanvasController _controller;
 
-  /// Cached AI service (created once, not on every rebuild).
-  FreeDesignAiService? _aiService;
-
   @override
   void initState() {
     super.initState();
     _controller = InfiniteCanvasController();
-    _aiService = createAiServiceFromEnv();
 
     // Register controller with CanvasState for zoom menu access
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -113,7 +108,6 @@ class _CanvasCenterContentState extends State<CanvasCenterContent> {
         // Prompt box overlay (outside canvas, so pointer events work correctly)
         PromptBoxOverlay(
           state: canvasState,
-          aiService: _aiService,
           onError: (message) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(

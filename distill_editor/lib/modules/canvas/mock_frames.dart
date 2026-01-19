@@ -794,7 +794,519 @@ EditorDocument createMinimalDemoFrames() {
     ),
   );
 
+  // =========================================================================
+  // Component Demo Frame - Showcases Components, Instances, and Slots
+  // =========================================================================
+  final componentDemoFrame = Frame(
+    id: 'frame_component_demo',
+    name: 'Component Demo',
+    rootNodeId: 'demo_root',
+    canvas: const CanvasPlacement(
+      position: Offset(100, 100),
+      size: Size(400, 600),
+    ),
+    createdAt: now,
+    updatedAt: now,
+  );
+
+  // Root container for demo
+  final demoRoot = Node(
+    id: 'demo_root',
+    name: 'Demo Root',
+    type: NodeType.container,
+    props: ContainerProps(),
+    layout: NodeLayout(
+      size: SizeMode.fixed(400, 600),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.vertical,
+        padding: TokenEdgePadding.allFixed(24),
+        gap: FixedNumeric(16),
+        mainAlign: MainAxisAlignment.start,
+        crossAlign: CrossAxisAlignment.stretch,
+      ),
+    ),
+    style: NodeStyle(fill: SolidFill(HexColor('#F5F5F5'))),
+    childIds: [
+      'demo_title',
+      'demo_section_components',
+      'demo_button_row',
+      'demo_section_slots',
+      'demo_card_instance',
+      'demo_card_instance_2',
+    ],
+  );
+
+  final demoTitle = Node(
+    id: 'demo_title',
+    name: 'Demo Title',
+    type: NodeType.text,
+    props: TextProps(
+      text: 'Component System Demo',
+      fontSize: 24,
+      fontWeight: 700,
+      color: '#1A1A1A',
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // Section header for components
+  final demoSectionComponents = Node(
+    id: 'demo_section_components',
+    name: 'Section: Components',
+    type: NodeType.text,
+    props: TextProps(
+      text: 'Button Instances (with overrides)',
+      fontSize: 14,
+      fontWeight: 500,
+      color: '#666666',
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // Row containing button instances
+  final demoButtonRow = Node(
+    id: 'demo_button_row',
+    name: 'Button Row',
+    type: NodeType.container,
+    props: ContainerProps(),
+    layout: NodeLayout(
+      size: SizeMode.hug(),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.horizontal,
+        gap: FixedNumeric(12),
+        mainAlign: MainAxisAlignment.start,
+        crossAlign: CrossAxisAlignment.center,
+      ),
+    ),
+    childIds: [
+      'inst_primary_btn',
+      'inst_secondary_btn',
+      'inst_icon_btn',
+    ],
+  );
+
+  // Instance 1: Primary button (default styling, text override)
+  final instPrimaryBtn = Node(
+    id: 'inst_primary_btn',
+    name: 'Primary Button',
+    type: NodeType.instance,
+    props: InstanceProps(
+      componentId: 'comp_button',
+      overrides: {
+        'btn_label': {
+          'props': {'text': 'Primary'},
+        },
+      },
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // Instance 2: Secondary button (text + opacity override)
+  final instSecondaryBtn = Node(
+    id: 'inst_secondary_btn',
+    name: 'Secondary Button',
+    type: NodeType.instance,
+    props: InstanceProps(
+      componentId: 'comp_button',
+      overrides: {
+        'btn_label': {
+          'props': {'text': 'Secondary'},
+        },
+        'btn_root': {
+          'style': {'opacity': 0.6},
+        },
+      },
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // Instance 3: Icon button (with icon)
+  final instIconBtn = Node(
+    id: 'inst_icon_btn',
+    name: 'Icon Button',
+    type: NodeType.instance,
+    props: InstanceProps(
+      componentId: 'comp_icon_button',
+      overrides: {
+        'icon_btn_icon': {
+          'props': {'icon': 'favorite'},
+        },
+      },
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // Section header for slots
+  final demoSectionSlots = Node(
+    id: 'demo_section_slots',
+    name: 'Section: Slots',
+    type: NodeType.text,
+    props: TextProps(
+      text: 'Card with Slot (placeholder)',
+      fontSize: 14,
+      fontWeight: 500,
+      color: '#666666',
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // Instance of card component (which contains a slot WITH CONTENT)
+  final demoCardInstance = Node(
+    id: 'demo_card_instance',
+    name: 'Card Instance',
+    type: NodeType.instance,
+    props: InstanceProps(
+      componentId: 'comp_card',
+      overrides: {
+        'card_title': {
+          'props': {'text': 'Card with Slot Content'},
+        },
+        'card_subtitle': {
+          'props': {'text': 'The blue area below is injected slot content!'},
+        },
+      },
+      slots: {
+        'content': SlotAssignment(rootNodeId: 'slot_content_root'),
+      },
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // Slot content - this is injected into the card's content slot
+  // Note: ownerInstanceId links this to the card instance for lifecycle management
+  final slotContentRoot = Node(
+    id: 'slot_content_root',
+    name: 'Slot Content',
+    type: NodeType.container,
+    props: ContainerProps(),
+    layout: NodeLayout(
+      size: SizeMode.hug(),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.vertical,
+        padding: TokenEdgePadding.allFixed(12),
+        gap: FixedNumeric(8),
+        mainAlign: MainAxisAlignment.center,
+        crossAlign: CrossAxisAlignment.center,
+      ),
+    ),
+    style: NodeStyle(
+      fill: SolidFill(HexColor('#E3F2FD')),
+      cornerRadius: CornerRadius.circular(8),
+    ),
+    ownerInstanceId: 'demo_card_instance',
+    childIds: ['slot_content_icon', 'slot_content_text'],
+  );
+
+  final slotContentIcon = Node(
+    id: 'slot_content_icon',
+    name: 'Content Icon',
+    type: NodeType.icon,
+    props: IconProps(
+      icon: 'check_circle',
+      size: 32,
+      color: '#1976D2',
+    ),
+    layout: NodeLayout(size: SizeMode.fixed(32, 32)),
+    ownerInstanceId: 'demo_card_instance',
+  );
+
+  final slotContentText = Node(
+    id: 'slot_content_text',
+    name: 'Content Text',
+    type: NodeType.text,
+    props: TextProps(
+      text: 'This content was injected into the slot!',
+      fontSize: 14,
+      fontWeight: 500,
+      color: '#1976D2',
+      textAlign: TextAlign.center,
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+    ownerInstanceId: 'demo_card_instance',
+  );
+
+  // Second card instance WITHOUT slot content (shows empty slot placeholder)
+  final demoCardInstance2 = Node(
+    id: 'demo_card_instance_2',
+    name: 'Card (Empty Slot)',
+    type: NodeType.instance,
+    props: InstanceProps(
+      componentId: 'comp_card',
+      overrides: {
+        'card_title': {
+          'props': {'text': 'Card with Empty Slot'},
+        },
+        'card_subtitle': {
+          'props': {'text': 'The gray area below is the slot placeholder'},
+        },
+      },
+      // No slots assignment - uses empty placeholder
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+  );
+
+  // =========================================================================
+  // Component Definitions
+  // =========================================================================
+
+  // Button Component Definition
+  final buttonComponent = ComponentDef(
+    id: 'comp_button',
+    name: 'Button',
+    description: 'A simple button with label',
+    rootNodeId: 'comp_button::btn_root',
+    exposedProps: {
+      'label': 'Click Me',
+    },
+    createdAt: now,
+    updatedAt: now,
+  );
+
+  // Button component nodes (source-namespaced)
+  final btnRoot = Node(
+    id: 'comp_button::btn_root',
+    name: 'Button Container',
+    type: NodeType.container,
+    props: ContainerProps(),
+    layout: NodeLayout(
+      size: SizeMode.hug(),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.horizontal,
+        padding: TokenEdgePadding.symmetric(horizontal: 16, vertical: 10),
+        mainAlign: MainAxisAlignment.center,
+        crossAlign: CrossAxisAlignment.center,
+      ),
+    ),
+    style: NodeStyle(
+      fill: SolidFill(HexColor('#007AFF')),
+      cornerRadius: CornerRadius.circular(8),
+    ),
+    sourceComponentId: 'comp_button',
+    templateUid: 'btn_root',
+    childIds: ['comp_button::btn_label'],
+  );
+
+  final btnLabel = Node(
+    id: 'comp_button::btn_label',
+    name: 'Button Label',
+    type: NodeType.text,
+    props: TextProps(
+      text: 'Click Me',
+      fontSize: 14,
+      fontWeight: 600,
+      color: '#FFFFFF',
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+    sourceComponentId: 'comp_button',
+    templateUid: 'btn_label',
+  );
+
+  // Icon Button Component Definition
+  final iconButtonComponent = ComponentDef(
+    id: 'comp_icon_button',
+    name: 'Icon Button',
+    description: 'A button with an icon',
+    rootNodeId: 'comp_icon_button::icon_btn_root',
+    exposedProps: {
+      'icon': 'star',
+    },
+    createdAt: now,
+    updatedAt: now,
+  );
+
+  // Icon Button component nodes (source-namespaced)
+  final iconBtnRoot = Node(
+    id: 'comp_icon_button::icon_btn_root',
+    name: 'Icon Button Container',
+    type: NodeType.container,
+    props: ContainerProps(),
+    layout: NodeLayout(
+      size: SizeMode.fixed(44, 44),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.horizontal,
+        mainAlign: MainAxisAlignment.center,
+        crossAlign: CrossAxisAlignment.center,
+      ),
+    ),
+    style: NodeStyle(
+      fill: SolidFill(HexColor('#FF3B30')),
+      cornerRadius: CornerRadius.circular(22),
+    ),
+    sourceComponentId: 'comp_icon_button',
+    templateUid: 'icon_btn_root',
+    childIds: ['comp_icon_button::icon_btn_icon'],
+  );
+
+  final iconBtnIcon = Node(
+    id: 'comp_icon_button::icon_btn_icon',
+    name: 'Button Icon',
+    type: NodeType.icon,
+    props: IconProps(
+      icon: 'star',
+      size: 20,
+      color: '#FFFFFF',
+    ),
+    layout: NodeLayout(size: SizeMode.fixed(20, 20)),
+    sourceComponentId: 'comp_icon_button',
+    templateUid: 'icon_btn_icon',
+  );
+
+  // Card Component Definition (with a slot!)
+  final cardComponent = ComponentDef(
+    id: 'comp_card',
+    name: 'Card',
+    description: 'A card component with title, subtitle, and content slot',
+    rootNodeId: 'comp_card::card_root',
+    exposedProps: {
+      'title': 'Card Title',
+      'subtitle': 'Card subtitle text',
+    },
+    createdAt: now,
+    updatedAt: now,
+  );
+
+  // Card component nodes (source-namespaced)
+  final cardRoot = Node(
+    id: 'comp_card::card_root',
+    name: 'Card Container',
+    type: NodeType.container,
+    props: ContainerProps(),
+    layout: NodeLayout(
+      size: SizeMode.hug(),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.vertical,
+        padding: TokenEdgePadding.allFixed(16),
+        gap: FixedNumeric(12),
+        mainAlign: MainAxisAlignment.start,
+        crossAlign: CrossAxisAlignment.stretch,
+      ),
+      constraints: LayoutConstraints(minWidth: 200),
+    ),
+    style: NodeStyle(
+      fill: SolidFill(HexColor('#FFFFFF')),
+      cornerRadius: CornerRadius.circular(12),
+      shadow: Shadow(
+        color: HexColor('#00000020'),
+        blur: 8,
+        offsetY: 2,
+      ),
+    ),
+    sourceComponentId: 'comp_card',
+    templateUid: 'card_root',
+    childIds: ['comp_card::card_header', 'comp_card::card_content_slot'],
+  );
+
+  final cardHeader = Node(
+    id: 'comp_card::card_header',
+    name: 'Card Header',
+    type: NodeType.container,
+    props: ContainerProps(),
+    layout: NodeLayout(
+      size: SizeMode.hug(),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.vertical,
+        gap: FixedNumeric(4),
+        mainAlign: MainAxisAlignment.start,
+        crossAlign: CrossAxisAlignment.start,
+      ),
+    ),
+    sourceComponentId: 'comp_card',
+    templateUid: 'card_header',
+    childIds: ['comp_card::card_title', 'comp_card::card_subtitle'],
+  );
+
+  final cardTitle = Node(
+    id: 'comp_card::card_title',
+    name: 'Card Title',
+    type: NodeType.text,
+    props: TextProps(
+      text: 'Card Title',
+      fontSize: 18,
+      fontWeight: 600,
+      color: '#1A1A1A',
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+    sourceComponentId: 'comp_card',
+    templateUid: 'card_title',
+  );
+
+  final cardSubtitle = Node(
+    id: 'comp_card::card_subtitle',
+    name: 'Card Subtitle',
+    type: NodeType.text,
+    props: TextProps(
+      text: 'Card subtitle text',
+      fontSize: 14,
+      fontWeight: 400,
+      color: '#666666',
+    ),
+    layout: NodeLayout(size: SizeMode.hug()),
+    sourceComponentId: 'comp_card',
+    templateUid: 'card_subtitle',
+  );
+
+  // This is the SLOT - a placeholder for content injection
+  final cardContentSlot = Node(
+    id: 'comp_card::card_content_slot',
+    name: 'Content Slot',
+    type: NodeType.slot,
+    props: SlotProps(
+      slotName: 'content',
+      defaultContentId: null, // No default content
+    ),
+    layout: NodeLayout(
+      size: SizeMode.fixed(double.infinity, 60),
+      autoLayout: AutoLayout(
+        direction: LayoutDirection.vertical,
+        mainAlign: MainAxisAlignment.center,
+        crossAlign: CrossAxisAlignment.center,
+      ),
+    ),
+    style: NodeStyle(
+      fill: SolidFill(HexColor('#F0F0F0')),
+      cornerRadius: CornerRadius.circular(8),
+      stroke: Stroke(
+        color: HexColor('#CCCCCC'),
+        width: 1,
+        position: StrokePosition.inside,
+      ),
+    ),
+    sourceComponentId: 'comp_card',
+    templateUid: 'card_content_slot',
+  );
+
   return EditorDocument.empty(documentId: 'demo_doc')
+      // Component Demo Frame
+      .withFrame(componentDemoFrame)
+      .withNode(demoRoot)
+      .withNode(demoTitle)
+      .withNode(demoSectionComponents)
+      .withNode(demoButtonRow)
+      .withNode(instPrimaryBtn)
+      .withNode(instSecondaryBtn)
+      .withNode(instIconBtn)
+      .withNode(demoSectionSlots)
+      .withNode(demoCardInstance)
+      .withNode(demoCardInstance2)
+      // Slot content nodes (owned by demo_card_instance)
+      .withNode(slotContentRoot)
+      .withNode(slotContentIcon)
+      .withNode(slotContentText)
+      // Button Component nodes
+      .withNode(btnRoot)
+      .withNode(btnLabel)
+      .withComponent(buttonComponent)
+      // Icon Button Component nodes
+      .withNode(iconBtnRoot)
+      .withNode(iconBtnIcon)
+      .withComponent(iconButtonComponent)
+      // Card Component nodes (with slot)
+      .withNode(cardRoot)
+      .withNode(cardHeader)
+      .withNode(cardTitle)
+      .withNode(cardSubtitle)
+      .withNode(cardContentSlot)
+      .withComponent(cardComponent)
       // ChatGPT Frame
       .withFrame(chatGptFrame)
       .withNode(gptRoot)

@@ -435,18 +435,27 @@ class InstanceProps extends NodeProps {
   /// Property overrides for this instance.
   final Map<String, dynamic> overrides;
 
+  /// Slot assignments for this instance.
+  ///
+  /// Keyed by slot name. Slots not present in the map use default content
+  /// (if the slot has `defaultContentId`) or remain empty.
+  final Map<String, SlotAssignment> slots;
+
   const InstanceProps({
     required this.componentId,
     this.overrides = const {},
+    this.slots = const {},
   });
 
   InstanceProps copyWith({
     String? componentId,
     Map<String, dynamic>? overrides,
+    Map<String, SlotAssignment>? slots,
   }) {
     return InstanceProps(
       componentId: componentId ?? this.componentId,
       overrides: overrides ?? this.overrides,
+      slots: slots ?? this.slots,
     );
   }
 
@@ -454,6 +463,11 @@ class InstanceProps extends NodeProps {
     return InstanceProps(
       componentId: json['componentId'] as String? ?? '',
       overrides: (json['overrides'] as Map<String, dynamic>?) ?? {},
+      slots: (json['slots'] as Map<String, dynamic>?)?.map(
+            (k, v) =>
+                MapEntry(k, SlotAssignment.fromJson(v as Map<String, dynamic>)),
+          ) ??
+          {},
     );
   }
 
@@ -461,6 +475,8 @@ class InstanceProps extends NodeProps {
   Map<String, dynamic> toJson() => {
         'componentId': componentId,
         if (overrides.isNotEmpty) 'overrides': overrides,
+        if (slots.isNotEmpty)
+          'slots': slots.map((k, v) => MapEntry(k, v.toJson())),
       };
 
   @override
@@ -468,10 +484,15 @@ class InstanceProps extends NodeProps {
       identical(this, other) ||
       other is InstanceProps &&
           componentId == other.componentId &&
-          mapEquals(overrides, other.overrides);
+          mapEquals(overrides, other.overrides) &&
+          mapEquals(slots, other.slots);
 
   @override
-  int get hashCode => Object.hash(componentId, Object.hashAll(overrides.entries));
+  int get hashCode => Object.hash(
+        componentId,
+        Object.hashAll(overrides.entries),
+        Object.hashAll(slots.entries),
+      );
 }
 
 // =============================================================================
@@ -523,4 +544,47 @@ class SlotProps extends NodeProps {
 
   @override
   int get hashCode => Object.hash(slotName, defaultContentId);
+}
+
+// =============================================================================
+// SlotAssignment
+// =============================================================================
+
+/// Assignment of content to a slot in a component instance.
+///
+/// In v1, each slot accepts exactly one root node. If you need multiple
+/// elements, wrap them in a container first.
+class SlotAssignment {
+  /// The root node ID of the injected content.
+  ///
+  /// This node must exist in `doc.nodes` with `ownerInstanceId` pointing
+  /// to the owning instance. Null means use default content or empty.
+  final String? rootNodeId;
+
+  const SlotAssignment({this.rootNodeId});
+
+  /// Whether this slot has content assigned.
+  bool get hasContent => rootNodeId != null;
+
+  SlotAssignment copyWith({String? rootNodeId}) {
+    return SlotAssignment(rootNodeId: rootNodeId ?? this.rootNodeId);
+  }
+
+  factory SlotAssignment.fromJson(Map<String, dynamic> json) {
+    return SlotAssignment(
+      rootNodeId: json['rootNodeId'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        if (rootNodeId != null) 'rootNodeId': rootNodeId,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SlotAssignment && rootNodeId == other.rootNodeId;
+
+  @override
+  int get hashCode => rootNodeId.hashCode;
 }

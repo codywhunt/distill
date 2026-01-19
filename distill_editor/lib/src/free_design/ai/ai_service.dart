@@ -567,6 +567,25 @@ String? getConfiguredProviderName() {
   return info != null ? '${info.provider} (${info.modelName})' : null;
 }
 
+/// Get the OpenRouter API key from environment.
+///
+/// Returns null if not configured.
+String? getOpenRouterApiKey() {
+  final apiKey = _getEnv('OPENROUTER_API_KEY');
+  return apiKey.isNotEmpty ? apiKey : null;
+}
+
+/// Create an AI service with a specific model.
+///
+/// Returns null if OPENROUTER_API_KEY is not configured.
+FreeDesignAiService? createAiServiceWithModel(LlmModel model) {
+  final apiKey = getOpenRouterApiKey();
+  if (apiKey == null) return null;
+
+  _log('Creating AI service with model: ${model.displayName} (${model.modelId})');
+  return FreeDesignAiService(model: model, apiKey: apiKey);
+}
+
 /// Information about the configured AI provider and model.
 class AiConfigInfo {
   final String provider;

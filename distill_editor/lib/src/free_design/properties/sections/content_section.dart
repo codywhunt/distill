@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:distill_ds/design_system.dart';
 
+import '../../models/component_def.dart';
 import '../../models/node.dart';
 import '../../models/node_props.dart';
+import '../../models/node_type.dart';
+import '../../patch/patch_op.dart';
 import '../../store/editor_document_store.dart';
 import '../widgets/property_section_header.dart';
 import '../editors/widgets/property_field.dart';
@@ -14,6 +17,14 @@ import '../editors/primitives/dropdown_editor.dart';
 import '../editors/slots/editor_prefixes.dart';
 import '../editors/pickers/color_picker_menu.dart';
 import '../../render/token_resolver.dart';
+
+/// Info about a slot in a component definition.
+class _SlotInfo {
+  final String name;
+  final bool hasDefault;
+
+  const _SlotInfo({required this.name, required this.hasDefault});
+}
 
 /// Content properties for a node.
 class ContentSection extends StatelessWidget {
@@ -512,6 +523,9 @@ class ContentSection extends StatelessWidget {
   }
 
   Widget _buildInstanceProps(BuildContext context, InstanceProps props) {
+    final component = store.document.components[props.componentId];
+    final slots = _findComponentSlots(component);
+
     return Column(
       children: [
         const PropertySectionHeader(title: 'Instance', showTopDivider: false),
@@ -525,8 +539,115 @@ class ContentSection extends StatelessWidget {
             ),
           ),
         ),
+        if (slots.isNotEmpty) ...[
+          const PropertySectionHeader(title: 'Slots'),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Column(
+              children: slots
+                  .map((slot) => _buildSlotControl(context, props, slot))
+                  .toList(),
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  /// Find all slots in a component by walking its node tree.
+  /// Uses visited set to prevent infinite loops on malformed graphs.
+  List<_SlotInfo> _findComponentSlots(ComponentDef? component) {
+    if (component == null) return [];
+    final slots = <_SlotInfo>[];
+    final visited = <String>{};
+
+    void walk(String nodeId) {
+      if (visited.contains(nodeId)) return; // Cycle protection
+      visited.add(nodeId);
+
+      final node = store.document.nodes[nodeId];
+      if (node == null) return;
+
+      if (node.type == NodeType.slot) {
+        final slotProps = node.props as SlotProps;
+        slots.add(_SlotInfo(
+          name: slotProps.slotName,
+          hasDefault: slotProps.defaultContentId != null,
+        ));
+      }
+
+      for (final childId in node.childIds) {
+        walk(childId);
+      }
+    }
+
+    walk(component.rootNodeId);
+    return slots;
+  }
+
+  Widget _buildSlotControl(
+    BuildContext context,
+    InstanceProps props,
+    _SlotInfo slot,
+  ) {
+    final assignment = props.slots[slot.name];
+    final hasContent = assignment?.hasContent == true;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              slot.name,
+              style: context.typography.body.small,
+            ),
+          ),
+          if (hasContent)
+            IconButton(
+              icon: Icon(LucideIcons.x, size: 14),
+              tooltip: 'Clear slot',
+              onPressed: () => store.clearSlotContent(nodeId, slot.name),
+              constraints: const BoxConstraints(
+                minWidth: 28,
+                minHeight: 28,
+              ),
+              padding: EdgeInsets.zero,
+            )
+          else
+            IconButton(
+              icon: Icon(LucideIcons.plus, size: 14),
+              tooltip: 'Add content',
+              onPressed: () => _addSlotContent(slot.name),
+              constraints: const BoxConstraints(
+                minWidth: 28,
+                minHeight: 28,
+              ),
+              padding: EdgeInsets.zero,
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _addSlotContent(String slotName) {
+    final contentId = 'slot_${slotName}_${DateTime.now().microsecondsSinceEpoch}';
+    final contentNode = Node(
+      id: contentId,
+      name: 'Slot Content',
+      type: NodeType.container,
+      props: const ContainerProps(),
+      ownerInstanceId: nodeId,
+    );
+
+    store.applyPatches([
+      InsertNode(contentNode),
+      SetProp(
+        id: nodeId,
+        path: '/props/slots/$slotName',
+        value: SlotAssignment(rootNodeId: contentId).toJson(),
+      ),
+    ], label: 'Add slot content');
   }
 
   Widget _buildSlotProps(BuildContext context, SlotProps props) {

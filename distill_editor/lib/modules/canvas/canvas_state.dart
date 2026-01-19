@@ -1,8 +1,7 @@
-import 'dart:ui';
-
 import 'package:distill_canvas/infinite_canvas.dart';
 import 'package:distill_canvas/utilities.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 
 import '../../src/free_design/canvas/drag/drag.dart';
 import '../../src/free_design/free_design.dart'
@@ -357,6 +356,73 @@ class CanvasState extends ChangeNotifier {
     final frameIds = _frameSpatialIndex.query(worldRect).toSet();
     _selection = frameIds.map((id) => FrameTarget(id)).toSet();
     notifyListeners();
+  }
+
+  /// Find the frame that edits a component, if it exists.
+  ///
+  /// Returns the frame ID if found, null otherwise.
+  String? findComponentFrame(String componentId) {
+    for (final frame in document.frames.values) {
+      if (frame.kind == FrameKind.component &&
+          frame.componentId == componentId) {
+        return frame.id;
+      }
+    }
+    return null;
+  }
+
+  /// Navigate to a component's editing frame.
+  ///
+  /// If a frame for the component already exists, selects and animates to it.
+  /// If no frame exists, creates one and animates to it.
+  ///
+  /// Returns the frame ID that was navigated to.
+  String navigateToComponent(String componentId) {
+    // First, check if a frame already exists for this component
+    var frameId = findComponentFrame(componentId);
+
+    if (frameId == null) {
+      // Create a new component frame
+      final frame = _store.createComponentFrame(
+        componentId: componentId,
+        position: _getNewComponentFramePosition(),
+      );
+      frameId = frame.id;
+    }
+
+    // Select the frame (frameId is guaranteed non-null at this point)
+    selectFrame(frameId);
+
+    // Animate to the frame if we have a controller
+    final frame = document.frames[frameId];
+    if (_canvasController != null && frame != null) {
+      _canvasController!.animateToFit(
+        frame.canvas.bounds,
+        padding: const EdgeInsets.all(50.0),
+      );
+    }
+
+    return frameId;
+  }
+
+  /// Get position for a new component frame.
+  ///
+  /// Places it to the right of existing frames, or at viewport center if no controller.
+  Offset _getNewComponentFramePosition() {
+    // Try to place near the viewport center
+    if (_canvasController != null) {
+      // Get visible bounds center
+      final viewSize = _canvasController!.viewportSize;
+      if (viewSize != null) {
+        final center = _canvasController!.viewToWorld(
+          Offset(viewSize.width / 2, viewSize.height / 2),
+        );
+        return center - const Offset(200, 200); // Offset to top-left of frame
+      }
+    }
+
+    // Fallback: place at origin
+    return Offset.zero;
   }
 
   /// Set the hovered target.

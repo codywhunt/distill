@@ -1,8 +1,19 @@
 import 'dart:ui';
 
+/// Distinguishes design frames from component editing frames.
+enum FrameKind {
+  /// A regular design surface (screen, page, modal).
+  design,
+
+  /// A frame for editing a component's internal structure.
+  component,
+}
+
 /// A frame is a top-level design surface (screen, page, modal).
 ///
 /// Frames exist on the infinite canvas and contain a tree of nodes.
+/// A frame can be either a design frame (for regular design work) or
+/// a component frame (for editing a component's internal structure).
 class Frame {
   /// Unique identifier for this frame.
   final String id;
@@ -16,6 +27,13 @@ class Frame {
   /// Canvas placement (position and size on the infinite canvas).
   final CanvasPlacement canvas;
 
+  /// The kind of frame (design surface or component editor).
+  final FrameKind kind;
+
+  /// For component frames: the ComponentDef this frame edits.
+  /// Null for design frames.
+  final String? componentId;
+
   /// When this frame was created.
   final DateTime createdAt;
 
@@ -27,6 +45,8 @@ class Frame {
     required this.name,
     required this.rootNodeId,
     required this.canvas,
+    this.kind = FrameKind.design,
+    this.componentId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -37,6 +57,8 @@ class Frame {
     String? name,
     String? rootNodeId,
     CanvasPlacement? canvas,
+    FrameKind? kind,
+    String? componentId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -45,12 +67,16 @@ class Frame {
       name: name ?? this.name,
       rootNodeId: rootNodeId ?? this.rootNodeId,
       canvas: canvas ?? this.canvas,
+      kind: kind ?? this.kind,
+      componentId: componentId ?? this.componentId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   /// Create a Frame from JSON.
+  ///
+  /// Backwards compatible: `kind` defaults to `design` if not present.
   factory Frame.fromJson(Map<String, dynamic> json) {
     return Frame(
       id: json['id'] as String,
@@ -59,6 +85,10 @@ class Frame {
       canvas: CanvasPlacement.fromJson(
         json['canvas'] as Map<String, dynamic>,
       ),
+      kind: json['kind'] != null
+          ? FrameKind.values.byName(json['kind'] as String)
+          : FrameKind.design,
+      componentId: json['componentId'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -70,6 +100,8 @@ class Frame {
         'name': name,
         'rootNodeId': rootNodeId,
         'canvas': canvas.toJson(),
+        'kind': kind.name,
+        if (componentId != null) 'componentId': componentId,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
@@ -82,6 +114,8 @@ class Frame {
           name == other.name &&
           rootNodeId == other.rootNodeId &&
           canvas == other.canvas &&
+          kind == other.kind &&
+          componentId == other.componentId &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt;
 
@@ -91,6 +125,8 @@ class Frame {
         name,
         rootNodeId,
         canvas,
+        kind,
+        componentId,
         createdAt,
         updatedAt,
       );

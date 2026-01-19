@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart' hide DragTarget;
+import 'dart:ui' as ui show TextAlign;
 import 'package:provider/provider.dart';
 
 import '../../../src/free_design/canvas/drag_target.dart';
 import '../../../src/free_design/models/editor_document.dart';
+import '../../../src/free_design/models/node_props.dart';
 import '../../../src/free_design/scene/expanded_scene.dart';
 import '../../../src/free_design/store/editor_document_store.dart';
 import '../canvas_state.dart';
@@ -108,9 +110,23 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
     final expandedNode = scene.nodes[expandedId];
     if (expandedNode == null) return const SizedBox.shrink();
 
-    // Instance nodes (patchTarget == null) are leaves - don't render children
-    final canExpand =
-        expandedNode.patchTargetId != null && expandedNode.childIds.isNotEmpty;
+    // Determine children to display:
+    // - For instance roots: show slot children from index (O(1) lookup)
+    // - For regular editable nodes: show their actual children
+    // - For non-editable nodes: no children (leaves)
+    final List<String> displayChildren;
+    if (expandedNode.origin?.kind == OriginKind.instanceRoot) {
+      // Instance roots show slot content as virtual children
+      displayChildren = scene.slotChildrenByInstance[expandedId] ?? const [];
+    } else if (expandedNode.patchTargetId != null) {
+      // Regular editable nodes show their actual children
+      displayChildren = expandedNode.childIds;
+    } else {
+      // Non-editable nodes (component children) are leaves
+      displayChildren = const [];
+    }
+
+    final canExpand = displayChildren.isNotEmpty;
     final isExpanded = canExpand && widget.treeState.isExpanded(expandedId);
 
     // Check selection/hover by matching expandedId
@@ -121,6 +137,11 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
 
     // Get node name from document (ExpandedNode doesn't have name)
     final nodeName = _getNodeName(store, expandedNode);
+
+    // Get componentId for instance nodes (for "go to component" action)
+    final componentId = expandedNode.props is InstanceProps
+        ? (expandedNode.props as InstanceProps).componentId
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,9 +163,13 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
               canExpand
                   ? () => widget.treeState.toggleExpanded(expandedId)
                   : null,
+          onGoToComponent:
+              componentId != null
+                  ? () => _navigateToComponent(context, componentId)
+                  : null,
         ),
         if (canExpand && isExpanded)
-          ...expandedNode.childIds.map(
+          ...displayChildren.map(
             (childId) => _buildNodeTree(
               scene,
               childId,
@@ -231,9 +256,13 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
     ExpandedNode expandedNode,
     String focusFrameId,
   ) {
-    // Only select if node can be patched (patchTarget != null)
-    if (expandedNode.patchTargetId == null) {
-      // Instance node - can't select
+    // Determine what to select:
+    // - Regular editable nodes and instance roots: patchTargetId is the doc node ID
+    // - Component children (null patchTargetId): not selectable
+    final patchTarget = expandedNode.patchTargetId;
+
+    if (patchTarget == null) {
+      // Component children can't be selected
       return;
     }
 
@@ -244,7 +273,7 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
       NodeTarget(
         frameId: focusFrameId,
         expandedId: expandedId,
-        patchTarget: expandedNode.patchTargetId,
+        patchTarget: patchTarget,
       ),
       addToSelection: false, // Replace selection
     );
@@ -256,7 +285,12 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
     ExpandedNode expandedNode,
     String focusFrameId,
   ) {
-    if (expandedNode.patchTargetId == null) return; // Can't hover instances
+    // Component children (null patchTargetId) can't be hovered
+    final patchTarget = expandedNode.patchTargetId;
+
+    if (patchTarget == null) {
+      return;
+    }
 
     final canvasState = context.read<CanvasState>();
 
@@ -264,7 +298,7 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
       NodeTarget(
         frameId: focusFrameId,
         expandedId: expandedId,
-        patchTarget: expandedNode.patchTargetId,
+        patchTarget: patchTarget,
       ),
     );
   }
@@ -278,6 +312,12 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
     if (hovered is NodeTarget && hovered.expandedId == expandedId) {
       canvasState.setHovered(null);
     }
+  }
+
+  /// Navigate to a component's editing frame.
+  void _navigateToComponent(BuildContext context, String componentId) {
+    final canvasState = context.read<CanvasState>();
+    canvasState.navigateToComponent(componentId);
   }
 
   /// Determine which frame should be shown in the tree.
@@ -315,7 +355,7 @@ class _WidgetTreePanelState extends State<WidgetTreePanel> {
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Colors.grey,
           ),
-          textAlign: TextAlign.center,
+          textAlign: ui.TextAlign.center,
         ),
       ),
     );
