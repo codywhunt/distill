@@ -1883,4 +1883,837 @@ void main() {
           true);
     });
   });
+
+  // ===========================================================================
+  // Phase 2: Parameter Application Tests
+  // ===========================================================================
+
+  group('Parameter Application', () {
+    late ExpandedSceneBuilder builder;
+    late Frame frame;
+    late DateTime now;
+
+    setUp(() {
+      builder = const ExpandedSceneBuilder();
+      now = DateTime.now();
+      frame = Frame(
+        id: 'f_main',
+        name: 'Main Frame',
+        rootNodeId: 'n_root',
+        canvas: const CanvasPlacement(
+          position: Offset.zero,
+          size: Size(375, 812),
+        ),
+        createdAt: now,
+        updatedAt: now,
+      );
+    });
+
+    test('param with no override uses default value', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_label',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Default Label',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_label',
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+        ],
+      );
+
+      // Instance with NO param override
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(componentId: 'comp_button'),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      final props = expandedLabel.props as TextProps;
+      expect(props.text, 'Default Label');
+    });
+
+    test('param override applied to correct node', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_label',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Default Label',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_label',
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+        ],
+      );
+
+      // Instance WITH param override
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {'label': 'Custom Label'},
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      final props = expandedLabel.props as TextProps;
+      expect(props.text, 'Custom Label');
+    });
+
+    test('param binding resolves by templateUid', () {
+      // Two nodes with different IDs but target uses templateUid
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'my_label_tpl', // Different from ID
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Default',
+            binding: ParamBinding(
+              targetTemplateUid: 'my_label_tpl', // Matches templateUid
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+        ],
+      );
+
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {'label': 'Resolved by templateUid'},
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      final props = expandedLabel.props as TextProps;
+      expect(props.text, 'Resolved by templateUid');
+    });
+
+    test('unknown param key ignored gracefully', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [], // No params defined
+      );
+
+      // Instance with unknown param key
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {'unknownKey': 'some value'},
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      // Should not throw
+      final scene = builder.build('f_main', doc);
+      expect(scene, isNotNull);
+    });
+
+    test('isOverridden set correctly when param is explicitly overridden', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_label',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Default',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_label',
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+        ],
+      );
+
+      // Instance WITH explicit param override
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {'label': 'Overridden'},
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      // Label with explicit override
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      expect(expandedLabel.origin?.isOverridden, true);
+
+      // Root has no overrides
+      final expandedRoot = scene.nodes['inst_btn::comp_button::btn_root']!;
+      expect(expandedRoot.origin?.isOverridden, false);
+    });
+
+    test('defaults apply but node not marked as overridden', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_label',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Default Label',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_label',
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+        ],
+      );
+
+      // Instance with NO param overrides (uses defaults)
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(componentId: 'comp_button'),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      // Default is applied
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      final props = expandedLabel.props as TextProps;
+      expect(props.text, 'Default Label');
+
+      // But NOT marked as overridden (using default, not explicit override)
+      expect(expandedLabel.origin?.isOverridden, false);
+    });
+
+    test('legacy overrides layer on top of param defaults', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_label',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Param Default',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_label',
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+        ],
+      );
+
+      // Instance with LEGACY override (not param override)
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          // Legacy overrides (deprecated)
+          overrides: {
+            'btn_label': {
+              'props': {'text': 'Legacy Override'},
+            },
+          },
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      // Legacy override takes precedence over param default
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      final props = expandedLabel.props as TextProps;
+      expect(props.text, 'Legacy Override');
+
+      // And should be marked as overridden
+      expect(expandedLabel.origin?.isOverridden, true);
+    });
+
+    test('type coercion handles invalid values gracefully', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_label',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Fallback',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_label',
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+        ],
+      );
+
+      // Instance with null value in paramOverrides
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {'label': null}, // Invalid - should use default
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      // Should not throw
+      final scene = builder.build('f_main', doc)!;
+
+      // Should fall back to default
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      final props = expandedLabel.props as TextProps;
+      expect(props.text, 'Fallback');
+    });
+
+    test('number param applies to layout width', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        layout: NodeLayout(size: SizeMode(width: AxisSizeFixed(100), height: AxisSizeHug())),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'width',
+            type: ParamType.number,
+            defaultValue: 200.0,
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_root',
+              bucket: OverrideBucket.layout,
+              field: ParamField.width,
+            ),
+          ),
+        ],
+      );
+
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {'width': 300},
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      final expandedRoot = scene.nodes['inst_btn::comp_button::btn_root']!;
+      expect(expandedRoot.layout.size.width, isA<AxisSizeFixed>());
+      expect((expandedRoot.layout.size.width as AxisSizeFixed).value, 300.0);
+    });
+
+    test('color param applies to style fill', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        style: NodeStyle(fill: SolidFill(HexColor('#000000'))),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'bgColor',
+            type: ParamType.color,
+            defaultValue: '#FF0000',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_root',
+              bucket: OverrideBucket.style,
+              field: ParamField.fillColor,
+            ),
+          ),
+        ],
+      );
+
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {'bgColor': '#00FF00'},
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      final expandedRoot = scene.nodes['inst_btn::comp_button::btn_root']!;
+      expect(expandedRoot.style.fill, isA<SolidFill>());
+      final fill = expandedRoot.style.fill as SolidFill;
+      expect(fill.color, isA<HexColor>());
+      expect((fill.color as HexColor).hex, '#00FF00');
+    });
+
+    test('multiple params apply to different nodes', () {
+      const buttonRoot = Node(
+        id: 'comp_button::btn_root',
+        name: 'Button Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['comp_button::btn_label', 'comp_button::btn_icon'],
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_root',
+      );
+
+      const buttonLabel = Node(
+        id: 'comp_button::btn_label',
+        name: 'Button Label',
+        type: NodeType.text,
+        props: TextProps(text: 'Original'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_label',
+      );
+
+      const buttonIcon = Node(
+        id: 'comp_button::btn_icon',
+        name: 'Button Icon',
+        type: NodeType.icon,
+        props: IconProps(icon: 'star'),
+        sourceComponentId: 'comp_button',
+        templateUid: 'btn_icon',
+      );
+
+      final component = ComponentDef(
+        id: 'comp_button',
+        name: 'Button',
+        rootNodeId: 'comp_button::btn_root',
+        createdAt: now,
+        updatedAt: now,
+        params: const [
+          ComponentParamDef(
+            key: 'label',
+            type: ParamType.string,
+            defaultValue: 'Default',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_label',
+              bucket: OverrideBucket.props,
+              field: ParamField.text,
+            ),
+          ),
+          ComponentParamDef(
+            key: 'iconName',
+            type: ParamType.string,
+            defaultValue: 'home',
+            binding: ParamBinding(
+              targetTemplateUid: 'btn_icon',
+              bucket: OverrideBucket.props,
+              field: ParamField.icon,
+            ),
+          ),
+        ],
+      );
+
+      const instanceNode = Node(
+        id: 'inst_btn',
+        name: 'Button Instance',
+        type: NodeType.instance,
+        props: InstanceProps(
+          componentId: 'comp_button',
+          paramOverrides: {
+            'label': 'Submit',
+            'iconName': 'check',
+          },
+        ),
+      );
+
+      const rootNode = Node(
+        id: 'n_root',
+        name: 'Root',
+        type: NodeType.container,
+        props: ContainerProps(),
+        childIds: ['inst_btn'],
+      );
+
+      final doc = EditorDocument.empty(documentId: 'doc_test')
+          .withNode(buttonRoot)
+          .withNode(buttonLabel)
+          .withNode(buttonIcon)
+          .withNode(instanceNode)
+          .withNode(rootNode)
+          .withComponent(component)
+          .withFrame(frame);
+
+      final scene = builder.build('f_main', doc)!;
+
+      final expandedLabel = scene.nodes['inst_btn::comp_button::btn_label']!;
+      expect((expandedLabel.props as TextProps).text, 'Submit');
+
+      final expandedIcon = scene.nodes['inst_btn::comp_button::btn_icon']!;
+      expect((expandedIcon.props as IconProps).icon, 'check');
+    });
+  });
 }

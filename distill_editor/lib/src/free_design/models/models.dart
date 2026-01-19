@@ -2,6 +2,7 @@
 library;
 
 export 'component_def.dart';
+export 'component_param.dart';
 export 'default_theme.dart';
 export 'editor_document.dart';
 export 'frame.dart';

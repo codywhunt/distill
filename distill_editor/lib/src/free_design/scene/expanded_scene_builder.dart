@@ -1,8 +1,12 @@
 import '../models/component_def.dart';
+import '../models/component_param.dart';
 import '../models/editor_document.dart';
 import '../models/node.dart';
+import '../models/node_layout.dart';
 import '../models/node_props.dart';
+import '../models/node_style.dart';
 import '../models/node_type.dart';
+import '../models/numeric_value.dart';
 import 'expanded_scene.dart';
 
 /// Builds an [ExpandedScene] from an [EditorDocument].
@@ -209,6 +213,14 @@ class ExpandedSceneBuilder {
     final newAncestors = {...ancestorComponentIds, componentId};
     final newInstancePath = [...instancePath, instanceId];
 
+    // Build binding index once per instance expansion for O(params bound to node) lookup
+    final bindingsByTemplateUid = <String, List<ComponentParamDef>>{};
+    for (final param in component.params) {
+      bindingsByTemplateUid
+          .putIfAbsent(param.binding.targetTemplateUid, () => [])
+          .add(param);
+    }
+
     // Recursively expand component tree with instance namespace
     // All children inside instance patch back to the instance node
     _expandComponentTree(
@@ -218,7 +230,9 @@ class ExpandedSceneBuilder {
       instanceId: instanceId,
       instanceNamespace: instanceNamespace,
       instanceProps: props,
-      overrides: props.overrides,
+      bindingsByTemplateUid: bindingsByTemplateUid,
+      // ignore: deprecated_member_use_from_same_package
+      legacyOverrides: props.overrides,
       nodes: nodes,
       patchTarget: patchTarget,
       slotChildrenByInstance: slotChildrenByInstance,
@@ -259,7 +273,8 @@ class ExpandedSceneBuilder {
     required String instanceId,
     required String instanceNamespace,
     required InstanceProps instanceProps,
-    required Map<String, dynamic> overrides,
+    required Map<String, List<ComponentParamDef>> bindingsByTemplateUid,
+    required Map<String, dynamic> legacyOverrides,
     required Map<String, ExpandedNode> nodes,
     required Map<String, String?> patchTarget,
     required Map<String, List<String>> slotChildrenByInstance,
@@ -335,7 +350,8 @@ class ExpandedSceneBuilder {
           instanceId: instanceId,
           instanceNamespace: instanceNamespace,
           instanceProps: instanceProps,
-          overrides: overrides,
+          bindingsByTemplateUid: bindingsByTemplateUid,
+          legacyOverrides: legacyOverrides,
           nodes: nodes,
           patchTarget: patchTarget,
           slotChildrenByInstance: slotChildrenByInstance,
@@ -345,16 +361,32 @@ class ExpandedSceneBuilder {
       }
     }
 
-    // Apply overrides - support both local and namespaced keys for compatibility
-    var resolvedNode = node;
-    final localId = localIdFromNodeId(node.id);
-    final nodeOverrides =
-        overrides[node.id] ?? (localId != null ? overrides[localId] : null);
-    final wasOverridden = nodeOverrides != null;
+    // 1. Resolve parameter values for this node (O(params bound to this node))
+    final (paramValues, hasExplicitParamOverride) = _resolveParamValues(
+      node: node,
+      bindingsByTemplateUid: bindingsByTemplateUid,
+      instanceProps: instanceProps,
+    );
 
-    if (nodeOverrides != null && nodeOverrides is Map<String, dynamic>) {
-      resolvedNode = _applyOverrides(node, nodeOverrides);
+    // 2. Apply parameter values (both defaults + explicit overrides)
+    var resolvedNode = node;
+    if (paramValues.isNotEmpty) {
+      resolvedNode = _applyParamValues(resolvedNode, paramValues);
     }
+
+    // 3. THEN apply legacy overrides on top (for back-compat)
+    final localId = localIdFromNodeId(node.id);
+    final legacyNodeOverrides = legacyOverrides[node.id] ??
+        (localId != null ? legacyOverrides[localId] : null);
+    final hasLegacyOverride = legacyNodeOverrides != null;
+
+    if (legacyNodeOverrides != null &&
+        legacyNodeOverrides is Map<String, dynamic>) {
+      resolvedNode = _applyOverrides(resolvedNode, legacyNodeOverrides);
+    }
+
+    // 4. isOverridden = has explicit param override OR has legacy override
+    final wasOverridden = hasExplicitParamOverride || hasLegacyOverride;
 
     // Create expanded node - instance children cannot be edited (v1)
     // Set editableTarget: false to ensure patchTargetId is null
@@ -774,5 +806,193 @@ class ExpandedSceneBuilder {
   String _namespaceId(String id, String? namespace) {
     if (namespace == null) return id;
     return '$namespace::$id';
+  }
+
+  // ===========================================================================
+  // Parameter Resolution
+  // ===========================================================================
+
+  /// Resolve param values for a node using pre-indexed bindings.
+  ///
+  /// Returns (values, hasExplicitOverride) where:
+  /// - values: Map of (bucket, field) -> resolved value (default or overridden)
+  /// - hasExplicitOverride: true if any param was explicitly overridden
+  (Map<ParamTarget, dynamic>, bool) _resolveParamValues({
+    required Node node,
+    required Map<String, List<ComponentParamDef>> bindingsByTemplateUid,
+    required InstanceProps instanceProps,
+  }) {
+    if (node.templateUid == null) return ({}, false);
+
+    final params = bindingsByTemplateUid[node.templateUid];
+    if (params == null || params.isEmpty) return ({}, false);
+
+    final result = <ParamTarget, dynamic>{};
+    var hasExplicitOverride = false;
+
+    for (final param in params) {
+      final hasOverride =
+          instanceProps.paramOverrides.containsKey(param.key);
+      if (hasOverride) hasExplicitOverride = true;
+
+      final rawValue = hasOverride
+          ? instanceProps.paramOverrides[param.key]
+          : param.defaultValue;
+
+      // Coerce + validate value
+      final value = _coerceParamValue(param, rawValue);
+      if (value != null) {
+        final target =
+            (bucket: param.binding.bucket, field: param.binding.field);
+        result[target] = value;
+      }
+    }
+
+    return (result, hasExplicitOverride);
+  }
+
+  /// Coerce raw value to correct type, return default if invalid.
+  dynamic _coerceParamValue(ComponentParamDef param, dynamic raw) {
+    switch (param.type) {
+      case ParamType.string:
+        return raw?.toString() ?? param.defaultValue;
+      case ParamType.number:
+        if (raw is num) return raw;
+        final parsed = num.tryParse('$raw');
+        return parsed ?? param.defaultValue;
+      case ParamType.boolean:
+        if (raw is bool) return raw;
+        return '$raw' == 'true';
+      case ParamType.color:
+        return raw is String ? raw : param.defaultValue;
+      case ParamType.enumValue:
+        return param.enumOptions?.contains(raw) == true
+            ? raw
+            : param.defaultValue;
+    }
+  }
+
+  /// Apply param values to a node, respecting bucket.
+  Node _applyParamValues(Node node, Map<ParamTarget, dynamic> values) {
+    var result = node;
+    for (final entry in values.entries) {
+      result = _applyParamTarget(result, entry.key, entry.value);
+    }
+    return result;
+  }
+
+  /// Apply a single param target value (bucket + field).
+  Node _applyParamTarget(Node node, ParamTarget target, dynamic value) {
+    return switch (target.bucket) {
+      OverrideBucket.props => _applyPropsField(node, target.field, value),
+      OverrideBucket.style => _applyStyleField(node, target.field, value),
+      OverrideBucket.layout => _applyLayoutField(node, target.field, value),
+    };
+  }
+
+  /// Apply a props field value to a node.
+  Node _applyPropsField(Node node, ParamField field, dynamic value) {
+    final props = node.props;
+
+    return switch (field) {
+      ParamField.text when props is TextProps =>
+        node.copyWith(props: props.copyWith(text: value as String)),
+      ParamField.icon when props is IconProps =>
+        node.copyWith(props: props.copyWith(icon: value as String)),
+      ParamField.imageSrc when props is ImageProps =>
+        node.copyWith(props: props.copyWith(src: value as String)),
+      _ => node, // Field doesn't apply to this node type
+    };
+  }
+
+  /// Apply a style field value to a node.
+  Node _applyStyleField(Node node, ParamField field, dynamic value) {
+    final style = node.style;
+
+    return switch (field) {
+      ParamField.fillColor => node.copyWith(
+          style: style.copyWith(
+            fill: SolidFill(HexColor(value as String)),
+          ),
+        ),
+      ParamField.strokeColor => node.copyWith(
+          style: style.copyWith(
+            stroke: Stroke(
+              color: HexColor(value as String),
+              width: style.stroke?.width ?? 1.0,
+              position: style.stroke?.position ?? StrokePosition.inside,
+            ),
+          ),
+        ),
+      ParamField.opacity => node.copyWith(
+          style: style.copyWith(opacity: (value as num).toDouble()),
+        ),
+      ParamField.cornerRadius => node.copyWith(
+          style: style.copyWith(
+            cornerRadius: CornerRadius.circular((value as num).toDouble()),
+          ),
+        ),
+      _ => node, // Field doesn't belong to style bucket
+    };
+  }
+
+  /// Apply a layout field value to a node.
+  Node _applyLayoutField(Node node, ParamField field, dynamic value) {
+    final layout = node.layout;
+    final numValue = (value as num).toDouble();
+
+    return switch (field) {
+      ParamField.width => node.copyWith(
+          layout: layout.copyWith(
+            size: layout.size.copyWith(width: AxisSizeFixed(numValue)),
+          ),
+        ),
+      ParamField.height => node.copyWith(
+          layout: layout.copyWith(
+            size: layout.size.copyWith(height: AxisSizeFixed(numValue)),
+          ),
+        ),
+      ParamField.paddingAll when layout.autoLayout != null => node.copyWith(
+          layout: layout.copyWith(
+            autoLayout: layout.autoLayout!.copyWith(
+              padding: TokenEdgePadding.all(FixedNumeric(numValue)),
+            ),
+          ),
+        ),
+      ParamField.paddingHorizontal when layout.autoLayout != null =>
+        node.copyWith(
+          layout: layout.copyWith(
+            autoLayout: layout.autoLayout!.copyWith(
+              padding: TokenEdgePadding(
+                top: layout.autoLayout!.padding.top,
+                right: FixedNumeric(numValue),
+                bottom: layout.autoLayout!.padding.bottom,
+                left: FixedNumeric(numValue),
+              ),
+            ),
+          ),
+        ),
+      ParamField.paddingVertical when layout.autoLayout != null =>
+        node.copyWith(
+          layout: layout.copyWith(
+            autoLayout: layout.autoLayout!.copyWith(
+              padding: TokenEdgePadding(
+                top: FixedNumeric(numValue),
+                right: layout.autoLayout!.padding.right,
+                bottom: FixedNumeric(numValue),
+                left: layout.autoLayout!.padding.left,
+              ),
+            ),
+          ),
+        ),
+      ParamField.gap when layout.autoLayout != null => node.copyWith(
+          layout: layout.copyWith(
+            autoLayout: layout.autoLayout!.copyWith(
+              gap: FixedNumeric(numValue),
+            ),
+          ),
+        ),
+      _ => node, // Field doesn't belong to layout bucket or no autoLayout
+    };
   }
 }

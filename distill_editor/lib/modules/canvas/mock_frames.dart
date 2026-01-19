@@ -17,7 +17,7 @@ EditorDocument createMinimalDemoFrames() {
     name: 'ChatGPT',
     rootNodeId: 'gpt_root',
     canvas: const CanvasPlacement(
-      position: Offset(1400, 100),
+      position: Offset(0, 100),
       size: Size(393, 852),
     ),
     createdAt: now,
@@ -802,7 +802,7 @@ EditorDocument createMinimalDemoFrames() {
     name: 'Component Demo',
     rootNodeId: 'demo_root',
     canvas: const CanvasPlacement(
-      position: Offset(100, 100),
+      position: Offset(600, 100),
       size: Size(400, 600),
     ),
     createdAt: now,
@@ -878,43 +878,34 @@ EditorDocument createMinimalDemoFrames() {
         crossAlign: CrossAxisAlignment.center,
       ),
     ),
-    childIds: [
-      'inst_primary_btn',
-      'inst_secondary_btn',
-      'inst_icon_btn',
-    ],
+    childIds: ['inst_primary_btn', 'inst_secondary_btn', 'inst_icon_btn'],
   );
 
-  // Instance 1: Primary button (default styling, text override)
+  // Instance 1: Primary button (using typed params - label overridden)
   final instPrimaryBtn = Node(
     id: 'inst_primary_btn',
     name: 'Primary Button',
     type: NodeType.instance,
     props: InstanceProps(
       componentId: 'comp_button',
-      overrides: {
-        'btn_label': {
-          'props': {'text': 'Primary'},
-        },
+      paramOverrides: {
+        'label': 'Primary', // This will show override indicator
       },
     ),
     layout: NodeLayout(size: SizeMode.hug()),
   );
 
-  // Instance 2: Secondary button (text + opacity override)
+  // Instance 2: Secondary button (using typed params - multiple overrides)
   final instSecondaryBtn = Node(
     id: 'inst_secondary_btn',
     name: 'Secondary Button',
     type: NodeType.instance,
     props: InstanceProps(
       componentId: 'comp_button',
-      overrides: {
-        'btn_label': {
-          'props': {'text': 'Secondary'},
-        },
-        'btn_root': {
-          'style': {'opacity': 0.6},
-        },
+      paramOverrides: {
+        'label': 'Secondary',
+        'backgroundColor': '#34C759', // Green instead of blue
+        'opacity': 0.8,
       },
     ),
     layout: NodeLayout(size: SizeMode.hug()),
@@ -957,17 +948,11 @@ EditorDocument createMinimalDemoFrames() {
     type: NodeType.instance,
     props: InstanceProps(
       componentId: 'comp_card',
-      overrides: {
-        'card_title': {
-          'props': {'text': 'Card with Slot Content'},
-        },
-        'card_subtitle': {
-          'props': {'text': 'The blue area below is injected slot content!'},
-        },
+      paramOverrides: {
+        'title': 'Card with Slot Content',
+        'subtitle': 'The blue area below is injected slot content!',
       },
-      slots: {
-        'content': SlotAssignment(rootNodeId: 'slot_content_root'),
-      },
+      slots: {'content': SlotAssignment(rootNodeId: 'slot_content_root')},
     ),
     layout: NodeLayout(size: SizeMode.hug()),
   );
@@ -1001,11 +986,7 @@ EditorDocument createMinimalDemoFrames() {
     id: 'slot_content_icon',
     name: 'Content Icon',
     type: NodeType.icon,
-    props: IconProps(
-      icon: 'check_circle',
-      size: 32,
-      color: '#1976D2',
-    ),
+    props: IconProps(icon: 'check_circle', size: 32, color: '#1976D2'),
     layout: NodeLayout(size: SizeMode.fixed(32, 32)),
     ownerInstanceId: 'demo_card_instance',
   );
@@ -1032,13 +1013,9 @@ EditorDocument createMinimalDemoFrames() {
     type: NodeType.instance,
     props: InstanceProps(
       componentId: 'comp_card',
-      overrides: {
-        'card_title': {
-          'props': {'text': 'Card with Empty Slot'},
-        },
-        'card_subtitle': {
-          'props': {'text': 'The gray area below is the slot placeholder'},
-        },
+      paramOverrides: {
+        'title': 'Card with Empty Slot',
+        'subtitle': 'The gray area below is the slot placeholder',
       },
       // No slots assignment - uses empty placeholder
     ),
@@ -1046,18 +1023,99 @@ EditorDocument createMinimalDemoFrames() {
   );
 
   // =========================================================================
+  // Component Frames (for editing components on canvas)
+  // =========================================================================
+
+  // Button Component Frame
+  final buttonComponentFrame = Frame(
+    id: 'frame_comp_button',
+    name: 'Button',
+    rootNodeId: 'comp_button::btn_root',
+    componentId: 'comp_button', // Links this frame to the component
+    canvas: const CanvasPlacement(
+      position: Offset(1050, 100),
+      size: Size(150, 50),
+    ),
+    createdAt: now,
+    updatedAt: now,
+  );
+
+  // Card Component Frame
+  final cardComponentFrame = Frame(
+    id: 'frame_comp_card',
+    name: 'Card',
+    rootNodeId: 'comp_card::card_root',
+    componentId: 'comp_card', // Links this frame to the component
+    canvas: const CanvasPlacement(
+      position: Offset(1050, 200),
+      size: Size(250, 200),
+    ),
+    createdAt: now,
+    updatedAt: now,
+  );
+
+  // =========================================================================
   // Component Definitions
   // =========================================================================
 
-  // Button Component Definition
+  // Button Component Definition (with typed params for Phase 2 testing)
   final buttonComponent = ComponentDef(
     id: 'comp_button',
     name: 'Button',
     description: 'A simple button with label',
     rootNodeId: 'comp_button::btn_root',
-    exposedProps: {
-      'label': 'Click Me',
-    },
+    params: [
+      // Text parameter - binds to label's text prop
+      ComponentParamDef(
+        key: 'label',
+        type: ParamType.string,
+        defaultValue: 'Click Me',
+        group: 'Content',
+        binding: ParamBinding(
+          targetTemplateUid: 'btn_label',
+          bucket: OverrideBucket.props,
+          field: ParamField.text,
+        ),
+      ),
+      // Color parameter - binds to root's fill color
+      ComponentParamDef(
+        key: 'backgroundColor',
+        type: ParamType.color,
+        defaultValue: '#007AFF',
+        group: 'Style',
+        binding: ParamBinding(
+          targetTemplateUid: 'btn_root',
+          bucket: OverrideBucket.style,
+          field: ParamField.fillColor,
+        ),
+      ),
+      // Number parameter - binds to root's corner radius
+      ComponentParamDef(
+        key: 'cornerRadius',
+        type: ParamType.number,
+        defaultValue: 8,
+        group: 'Style',
+        binding: ParamBinding(
+          targetTemplateUid: 'btn_root',
+          bucket: OverrideBucket.style,
+          field: ParamField.cornerRadius,
+        ),
+      ),
+      // Opacity parameter
+      ComponentParamDef(
+        key: 'opacity',
+        type: ParamType.number,
+        defaultValue: 1.0,
+        group: 'Style',
+        binding: ParamBinding(
+          targetTemplateUid: 'btn_root',
+          bucket: OverrideBucket.style,
+          field: ParamField.opacity,
+        ),
+      ),
+    ],
+    // ignore: deprecated_member_use_from_same_package
+    exposedProps: {'label': 'Click Me'},
     createdAt: now,
     updatedAt: now,
   );
@@ -1107,9 +1165,7 @@ EditorDocument createMinimalDemoFrames() {
     name: 'Icon Button',
     description: 'A button with an icon',
     rootNodeId: 'comp_icon_button::icon_btn_root',
-    exposedProps: {
-      'icon': 'star',
-    },
+    exposedProps: {'icon': 'star'},
     createdAt: now,
     updatedAt: now,
   );
@@ -1141,26 +1197,70 @@ EditorDocument createMinimalDemoFrames() {
     id: 'comp_icon_button::icon_btn_icon',
     name: 'Button Icon',
     type: NodeType.icon,
-    props: IconProps(
-      icon: 'star',
-      size: 20,
-      color: '#FFFFFF',
-    ),
+    props: IconProps(icon: 'star', size: 20, color: '#FFFFFF'),
     layout: NodeLayout(size: SizeMode.fixed(20, 20)),
     sourceComponentId: 'comp_icon_button',
     templateUid: 'icon_btn_icon',
   );
 
-  // Card Component Definition (with a slot!)
+  // Card Component Definition (with a slot and typed params!)
   final cardComponent = ComponentDef(
     id: 'comp_card',
     name: 'Card',
     description: 'A card component with title, subtitle, and content slot',
     rootNodeId: 'comp_card::card_root',
-    exposedProps: {
-      'title': 'Card Title',
-      'subtitle': 'Card subtitle text',
-    },
+    params: [
+      // Title parameter
+      ComponentParamDef(
+        key: 'title',
+        type: ParamType.string,
+        defaultValue: 'Card Title',
+        group: 'Content',
+        binding: ParamBinding(
+          targetTemplateUid: 'card_title',
+          bucket: OverrideBucket.props,
+          field: ParamField.text,
+        ),
+      ),
+      // Subtitle parameter
+      ComponentParamDef(
+        key: 'subtitle',
+        type: ParamType.string,
+        defaultValue: 'Card subtitle text',
+        group: 'Content',
+        binding: ParamBinding(
+          targetTemplateUid: 'card_subtitle',
+          bucket: OverrideBucket.props,
+          field: ParamField.text,
+        ),
+      ),
+      // Card background color
+      ComponentParamDef(
+        key: 'cardBackground',
+        type: ParamType.color,
+        defaultValue: '#FFFFFF',
+        group: 'Style',
+        binding: ParamBinding(
+          targetTemplateUid: 'card_root',
+          bucket: OverrideBucket.style,
+          field: ParamField.fillColor,
+        ),
+      ),
+      // Card corner radius
+      ComponentParamDef(
+        key: 'cardRadius',
+        type: ParamType.number,
+        defaultValue: 12,
+        group: 'Style',
+        binding: ParamBinding(
+          targetTemplateUid: 'card_root',
+          bucket: OverrideBucket.style,
+          field: ParamField.cornerRadius,
+        ),
+      ),
+    ],
+    // ignore: deprecated_member_use_from_same_package
+    exposedProps: {'title': 'Card Title', 'subtitle': 'Card subtitle text'},
     createdAt: now,
     updatedAt: now,
   );
@@ -1185,11 +1285,7 @@ EditorDocument createMinimalDemoFrames() {
     style: NodeStyle(
       fill: SolidFill(HexColor('#FFFFFF')),
       cornerRadius: CornerRadius.circular(12),
-      shadow: Shadow(
-        color: HexColor('#00000020'),
-        blur: 8,
-        offsetY: 2,
-      ),
+      shadow: Shadow(color: HexColor('#00000020'), blur: 8, offsetY: 2),
     ),
     sourceComponentId: 'comp_card',
     templateUid: 'card_root',
@@ -1296,6 +1392,7 @@ EditorDocument createMinimalDemoFrames() {
       .withNode(btnRoot)
       .withNode(btnLabel)
       .withComponent(buttonComponent)
+      .withFrame(buttonComponentFrame) // Component frame for Button
       // Icon Button Component nodes
       .withNode(iconBtnRoot)
       .withNode(iconBtnIcon)
@@ -1307,6 +1404,7 @@ EditorDocument createMinimalDemoFrames() {
       .withNode(cardSubtitle)
       .withNode(cardContentSlot)
       .withComponent(cardComponent)
+      .withFrame(cardComponentFrame) // Component frame for Card
       // ChatGPT Frame
       .withFrame(chatGptFrame)
       .withNode(gptRoot)

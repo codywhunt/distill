@@ -26,43 +26,49 @@ class LlmModel {
 
   // Anthropic (via OpenRouter)
   static const claudeOpus = LlmModel(
-    'anthropic/claude-opus-4.5',
+    'anthropic/claude-opus-4.5:nitro',
     'Claude Opus 4.5',
   );
   static const claudeSonnet = LlmModel(
-    'anthropic/claude-sonnet-4.5',
+    'anthropic/claude-sonnet-4.5:nitro',
     'Claude Sonnet 4.5',
   );
   static const claudeHaiku = LlmModel(
-    'anthropic/claude-haiku-4.5',
+    'anthropic/claude-haiku-4.5:nitro',
     'Claude Haiku 4.5',
   );
 
   // OpenAI (via OpenRouter)
-  static const gpt52 = LlmModel('openai/gpt-5.2', 'GPT-5.2');
+  static const gpt52 = LlmModel('openai/gpt-5.2:nitro', 'GPT-5.2');
   static const gpt51CodexMini = LlmModel(
-    'openai/gpt-5.1-codex-mini',
+    'openai/gpt-5.1-codex-mini:nitro',
     'GPT-5.1 Codex Mini',
   );
-  static const gpt52Codex = LlmModel('openai/gpt-5.2-codex', 'GPT-5.2 Codex');
+  static const gpt52Codex = LlmModel(
+    'openai/gpt-5.2-codex:nitro',
+    'GPT-5.2 Codex',
+  );
 
   // Google Gemini (via OpenRouter)
   static const geminiPro = LlmModel(
-    'google/gemini-3-pro-preview',
+    'google/gemini-3-pro-preview:nitro',
     'Gemini 3 Pro',
   );
   static const geminiFlash = LlmModel(
-    'google/gemini-3-flash-preview',
+    'google/gemini-3-flash-preview:nitro',
     'Gemini 3 Flash',
   );
 
   // Meta Llama (via OpenRouter)
   static const grokCodeFast1 = LlmModel(
-    'x-ai/grok-code-fast-1',
+    'x-ai/grok-code-fast-1:nitro',
     'xAI Grok Code Fast 1',
   );
-  static const gptOss120b = LlmModel('openai/gpt-oss-120b', 'GPT-OSS 120B');
-  static const glm47 = LlmModel('z-ai/glm-4.7', 'GLM 4.7');
+  static const gptOss120b = LlmModel(
+    'openai/gpt-oss-120b:nitro',
+    'GPT-OSS 120B',
+  );
+  static const glm47 = LlmModel('z-ai/glm-4.7:nitro', 'GLM 4.7');
 
   /// All available preset models.
   static const all = [

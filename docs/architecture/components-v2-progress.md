@@ -4,7 +4,7 @@
 
 **Roadmap**: [components-v2-roadmap.md](./components-v2-roadmap.md)
 **Started**: 2026-01-18
-**Current Phase**: Phase 1.5 Complete - Ready for Phase 2
+**Current Phase**: Phase 2 Complete - Ready for Phase 3
 
 ---
 
@@ -15,7 +15,7 @@
 | Phase 0: Foundation Hardening | ✅ Complete | 2026-01-18 | 2026-01-18 | All 33 tests passing |
 | Phase 1: Slots That Work | ✅ Complete | 2026-01-18 | 2026-01-18 | 48 tests passing (43 unit + 5 integration) |
 | Phase 1.5: Component Navigation | ✅ Complete | 2026-01-18 | 2026-01-18 | 19 tests passing (6 unit + 13 integration) |
-| Phase 2: Parameters | Not Started | - | - | - |
+| Phase 2: Parameters | ✅ Complete | 2026-01-18 | 2026-01-18 | 85 tests passing (35 unit + 12 expansion + 8 integration) |
 | Phase 3: Component Library | Not Started | - | - | - |
 | Phase 4: Variants | Not Started | - | - | - |
 
@@ -225,36 +225,112 @@ None.
 
 ## Phase 2: Parameters
 
-### Status: Not Started
+### Status: ✅ Complete
 
 ### Tasks Completed
-- [ ] Add `ComponentParamDef` model
-- [ ] Add `ParamBinding` model
-- [ ] Add `params` to ComponentDef
-- [ ] Add `paramOverrides` to InstanceProps
-- [ ] Apply params during expansion
-- [ ] Parameter section in prop panel
-- [ ] Override indicators
-- [ ] Reset param action
+- [x] Add `ComponentParamDef` model
+- [x] Add `ParamBinding` model
+- [x] Add `ParamType`, `OverrideBucket`, `ParamField` enums
+- [x] Add `ParamTarget` typedef for keying resolved values
+- [x] Add `params` to ComponentDef (with `@Deprecated` `exposedProps` for backwards compatibility)
+- [x] Add `paramOverrides` to InstanceProps (with `@Deprecated` `overrides` for backwards compatibility)
+- [x] Apply params during expansion with pre-indexed binding lookup
+- [x] Parameter section in prop panel (grouped by `param.group`)
+- [x] Override indicators (accent-colored bar)
+- [x] Reset param action (via SetProp with empty map)
+- [x] Type coercion for invalid paramOverride values
+- [x] Support for multiple param types: string, number, boolean, color, enumValue
+- [x] Export from models.dart barrel file
 
 ### Test Results
 ```
-Total: -
-Passed: -
-Failed: -
+Unit Tests (component_param_test.dart): 23 total, 23 passed
+Expansion Tests (expanded_scene_builder_test.dart - Parameter Application group): 12 total, 12 passed
+Integration Tests (parameter_binding_test.dart): 8 total, 8 passed
+Total: 85 (combined with existing 42 expansion tests)
+Passed: 85
+Failed: 0
 ```
 
+**Unit Tests (component_param_test.dart)**:
+1. ParamType enum serialization round-trips
+2. OverrideBucket enum serialization round-trips
+3. ParamField enum serialization round-trips
+4. ParamBinding creates with required fields
+5. ParamBinding JSON round-trip preserves data
+6. ParamBinding equality works correctly
+7. ComponentParamDef creates with required fields
+8. ComponentParamDef creates with all optional fields
+9. ComponentParamDef JSON round-trip for string/number/boolean/color/enum params
+10. ComponentParamDef copyWith creates modified copy
+11. ComponentParamDef equality handles enumOptions correctly
+12. ParamTarget can be used as map key
+
+**Expansion Tests (expanded_scene_builder_test.dart - Parameter Application group)**:
+1. param with no override uses default value
+2. param override applied to correct node
+3. param binding resolves by templateUid
+4. unknown param key ignored gracefully
+5. isOverridden set correctly when param is explicitly overridden
+6. defaults apply but node NOT marked as overridden (CRITICAL)
+7. legacy overrides layer on top of param defaults
+8. type coercion handles invalid values gracefully
+9. number param applies to layout width
+10. color param applies to style fill
+11. multiple params apply to different nodes
+
+**Integration Tests (parameter_binding_test.dart)**:
+1. param override via SetProp updates expanded scene
+2. reset param by replacing entire paramOverrides map
+3. param change updates expanded scene with color
+4. multiple params can be set independently
+5. undo restores previous param value
+6. param override persists through document round-trip
+7. nested instances with params work correctly
+
 ### Decisions Made During Implementation
-_Document any decisions made that weren't covered in the roadmap._
+
+1. **Pre-index params by `targetTemplateUid`**: Build `bindingsByTemplateUid` map once per instance expansion for O(params bound to node) instead of O(all params) lookup. This is important for components with many parameters.
+
+2. **Use `(bucket, field)` as key for resolved values**: The `ParamTarget` typedef `({OverrideBucket bucket, ParamField field})` prevents field confusion across buckets. A `text` field in `props` bucket is distinct from any potential `text` field in other buckets.
+
+3. **`isOverridden` semantics**: Only true when an explicit `paramOverrides[key]` exists. Parameter defaults are applied to nodes but do NOT set `isOverridden = true`. This prevents false positives in the UI.
+
+4. **Layer param + legacy overrides**: Params (defaults + explicit overrides) are applied first, then legacy `overrides` are applied on top. This ensures backward compatibility while allowing migration to the new system.
+
+5. **Type coercion with fallback to default**: Invalid values in `paramOverrides` (wrong type, null, etc.) fall back to the parameter's `defaultValue` rather than crashing. This prevents expansion failures from bad JSON.
+
+6. **`@Deprecated` annotations**: Both `ComponentDef.exposedProps` and `InstanceProps.overrides` are marked as deprecated to guide migration while maintaining backward compatibility.
+
+7. **Param reset via entire map replacement**: The patch system doesn't support nested map key deletion, so resetting a param uses `SetProp(path: '/props/paramOverrides', value: {})` to replace the entire map. Individual key updates use `SetProp(path: '/props/paramOverrides/$key', value: newValue)`.
+
+8. **Parameter grouping in UI**: Parameters are grouped by their `group` field (defaulting to "General") in the property panel, making it easier to organize many parameters.
 
 ### Lessons Learned
-_What worked well? What was harder than expected?_
+
+- **API discovery for immutable models**: The codebase uses immutable models without `copyWith` for some types (`TokenEdgePadding`, `Stroke`). Had to create new instances with preserved values rather than using copyWith.
+
+- **NumericValue vs FixedNumeric**: `NumericValue` is the abstract base class; `FixedNumeric` is the concrete implementation for fixed values. No `NumericValue.fixed()` factory exists.
+
+- **HexColor uses `.hex` not `.value`**: The `ColorValue` hierarchy uses type-specific properties (`HexColor.hex`, `TokenColor.token`).
+
+- **Parameter bindings use `templateUid` not node ID**: This is crucial because component node IDs are namespaced (`comp_button::btn_label`) but `templateUid` is the stable identifier (`btn_label`) that survives renaming.
+
+- **Component change propagation requires instance tracking**: When a component's source nodes change, `CanvasState._onStoreChanged()` must invalidate ALL frames containing instances of that component, not just the frame containing the changed node. The fix tracks affected component IDs via `node.sourceComponentId` and scans all frames for instances of those components.
 
 ### Blockers Encountered
-_Any blockers and how they were resolved._
+
+- **Patch system limitation**: Setting individual keys in nested maps (`/props/paramOverrides/$key`) to `null` doesn't work cleanly due to unmodifiable map errors. Workaround: replace the entire `paramOverrides` map when resetting parameters.
 
 ### Notes for Phase 3
-_Anything the next phase needs to know._
+
+1. **Parameters are fully functional**: Components can define typed parameters with bindings to node fields. Instances can override parameters, and the property panel shows controls grouped by category.
+
+2. **UI controls available for all param types**: String (TextEditor), Number (NumberEditor), Boolean (BooleanEditor), Color (ColorPickerPopover), Enum (DropdownEditor).
+
+3. **Override indicator pattern**: A small accent-colored bar appears next to overridden parameters, clickable to reset. This pattern can be reused for other override indicators.
+
+4. **Type coercion is defensive**: The expansion system won't crash on malformed `paramOverrides` - it falls back to defaults gracefully.
 
 ---
 
@@ -328,10 +404,14 @@ _Anything future work needs to know._
 ## Cross-Phase Notes
 
 ### Architecture Insights
-_Observations about the overall architecture that emerged during implementation._
+
+1. **Component change propagation requires explicit instance tracking**: The `CanvasState` cache invalidation logic must track which components are affected by node changes (via `sourceComponentId`) and then scan all frames for instances of those components. Simply invalidating the frame containing the changed node is insufficient because instances in other frames also depend on that component's definition.
+
+2. **`getFrameForNode()` only returns direct containment**: This helper finds the frame whose subtree contains a node ID, but doesn't account for component/instance relationships. Frames with instances of a component aren't "found" when searching for component source nodes.
 
 ### Technical Debt Created
-_Any shortcuts taken that should be addressed later._
+
+1. **O(frames × nodes) scan for instance invalidation**: The current implementation scans all frames and their subtrees when a component changes. For large documents with many frames, this could become a bottleneck. Consider maintaining a reverse index: `componentId → Set<frameId>` that's updated when instances are added/removed.
 
 ### Documentation Gaps
 _Areas where the roadmap was unclear or needed updates._
@@ -345,6 +425,8 @@ _Any performance considerations discovered during implementation._
 
 | Date | Phase | Change | Author |
 |------|-------|--------|--------|
+| 2026-01-18 | Phase 2 | Fixed cache invalidation: component source node changes now propagate to all frames containing instances of that component via `_onStoreChanged()` in CanvasState | Claude |
+| 2026-01-18 | Phase 2 | Completed Phase 2: Parameters - ComponentParamDef model, ParamBinding, typed params (string/number/boolean/color/enum), pre-indexed binding resolution, property panel UI with grouping, override indicators, backwards-compatible with legacy overrides, 85 tests passing | Claude |
 | 2026-01-18 | Phase 1.5 | Completed Phase 1.5: Component Navigation - FrameKind enum, Frame.componentId, navigateToComponent, createComponentFrame, clickable instance badges, 26 tests passing | Claude |
 | 2026-01-18 | Phase 1 | Fixed instance selection: scene builder now creates ExpandedNode for instances with OriginKind.instanceRoot, enabling layer tree selection | Claude |
 | 2026-01-18 | Phase 1 | Completed Phase 1: Slots That Work - SlotAssignment model, slot expansion, slot content editability, property panel UI, layer tree display, lifecycle cleanup, 48 tests passing | Claude |

@@ -1394,10 +1394,38 @@ class CanvasState extends ChangeNotifier {
       // 2. Component changes affect all instances using that component
       // 3. Full frame recompile is still fast enough for v1
       final affectedFrames = <String>{};
+      final affectedComponentIds = <String>{};
+
       for (final nodeId in changes.compilationDirty) {
         final frameId = _store.getFrameForNode(nodeId);
         if (frameId != null) {
           affectedFrames.add(frameId);
+        }
+
+        // Track which components are affected by this change
+        // If a node belongs to a component (sourceComponentId), mark that component dirty
+        final node = document.nodes[nodeId];
+        if (node?.sourceComponentId != null) {
+          affectedComponentIds.add(node!.sourceComponentId!);
+        }
+      }
+
+      // If any component was modified, find ALL frames that contain instances of those components
+      // This ensures instance frames are invalidated when their component changes
+      if (affectedComponentIds.isNotEmpty) {
+        for (final frame in document.frames.values) {
+          // Check if this frame contains any instances of affected components
+          final frameNodes = document.getSubtree(frame.rootNodeId);
+          for (final nodeId in frameNodes) {
+            final node = document.nodes[nodeId];
+            if (node?.type == NodeType.instance) {
+              final instanceProps = node!.props as InstanceProps;
+              if (affectedComponentIds.contains(instanceProps.componentId)) {
+                affectedFrames.add(frame.id);
+                break; // No need to check more nodes in this frame
+              }
+            }
+          }
         }
       }
 

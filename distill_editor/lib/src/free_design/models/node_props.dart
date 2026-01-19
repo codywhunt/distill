@@ -432,7 +432,14 @@ class InstanceProps extends NodeProps {
   /// Reference to the component definition.
   final String componentId;
 
-  /// Property overrides for this instance.
+  /// Parameter overrides keyed by parameter key (v2).
+  ///
+  /// Values must match the corresponding [ComponentParamDef.type].
+  /// Parameters not in this map use their default values.
+  final Map<String, dynamic> paramOverrides;
+
+  /// Legacy property overrides keyed by node ID (deprecated).
+  @Deprecated('Use paramOverrides instead for typed parameter overrides')
   final Map<String, dynamic> overrides;
 
   /// Slot assignments for this instance.
@@ -443,17 +450,22 @@ class InstanceProps extends NodeProps {
 
   const InstanceProps({
     required this.componentId,
+    this.paramOverrides = const {},
+    // ignore: deprecated_member_use_from_same_package
     this.overrides = const {},
     this.slots = const {},
   });
 
   InstanceProps copyWith({
     String? componentId,
-    Map<String, dynamic>? overrides,
+    Map<String, dynamic>? paramOverrides,
+    @Deprecated('Use paramOverrides instead') Map<String, dynamic>? overrides,
     Map<String, SlotAssignment>? slots,
   }) {
     return InstanceProps(
       componentId: componentId ?? this.componentId,
+      paramOverrides: paramOverrides ?? this.paramOverrides,
+      // ignore: deprecated_member_use_from_same_package
       overrides: overrides ?? this.overrides,
       slots: slots ?? this.slots,
     );
@@ -462,7 +474,10 @@ class InstanceProps extends NodeProps {
   factory InstanceProps.fromJson(Map<String, dynamic> json) {
     return InstanceProps(
       componentId: json['componentId'] as String? ?? '',
-      overrides: (json['overrides'] as Map<String, dynamic>?) ?? {},
+      paramOverrides:
+          (json['paramOverrides'] as Map<String, dynamic>?) ?? const {},
+      // ignore: deprecated_member_use_from_same_package
+      overrides: (json['overrides'] as Map<String, dynamic>?) ?? const {},
       slots: (json['slots'] as Map<String, dynamic>?)?.map(
             (k, v) =>
                 MapEntry(k, SlotAssignment.fromJson(v as Map<String, dynamic>)),
@@ -474,6 +489,8 @@ class InstanceProps extends NodeProps {
   @override
   Map<String, dynamic> toJson() => {
         'componentId': componentId,
+        if (paramOverrides.isNotEmpty) 'paramOverrides': paramOverrides,
+        // ignore: deprecated_member_use_from_same_package
         if (overrides.isNotEmpty) 'overrides': overrides,
         if (slots.isNotEmpty)
           'slots': slots.map((k, v) => MapEntry(k, v.toJson())),
@@ -484,12 +501,16 @@ class InstanceProps extends NodeProps {
       identical(this, other) ||
       other is InstanceProps &&
           componentId == other.componentId &&
+          mapEquals(paramOverrides, other.paramOverrides) &&
+          // ignore: deprecated_member_use_from_same_package
           mapEquals(overrides, other.overrides) &&
           mapEquals(slots, other.slots);
 
   @override
   int get hashCode => Object.hash(
         componentId,
+        Object.hashAll(paramOverrides.entries),
+        // ignore: deprecated_member_use_from_same_package
         Object.hashAll(overrides.entries),
         Object.hashAll(slots.entries),
       );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:distill_ds/design_system.dart';
 
 import '../../models/component_def.dart';
+import '../../models/component_param.dart';
 import '../../models/node.dart';
 import '../../models/node_props.dart';
 import '../../models/node_type.dart';
@@ -525,6 +526,13 @@ class ContentSection extends StatelessWidget {
   Widget _buildInstanceProps(BuildContext context, InstanceProps props) {
     final component = store.document.components[props.componentId];
     final slots = _findComponentSlots(component);
+    final params = component?.params ?? [];
+
+    // Group params by group field
+    final groupedParams = <String, List<ComponentParamDef>>{};
+    for (final param in params) {
+      groupedParams.putIfAbsent(param.group ?? 'General', () => []).add(param);
+    }
 
     return Column(
       children: [
@@ -539,6 +547,21 @@ class ContentSection extends StatelessWidget {
             ),
           ),
         ),
+        // Parameters section (grouped)
+        if (params.isNotEmpty) ...[
+          for (final entry in groupedParams.entries) ...[
+            PropertySectionHeader(title: entry.key),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Column(
+                children: entry.value
+                    .map((p) => _buildParamControl(context, props, p))
+                    .toList(),
+              ),
+            ),
+          ],
+        ],
+        // Slots section
         if (slots.isNotEmpty) ...[
           const PropertySectionHeader(title: 'Slots'),
           Padding(
@@ -552,6 +575,94 @@ class ContentSection extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// Build a control for a component parameter.
+  Widget _buildParamControl(
+    BuildContext context,
+    InstanceProps props,
+    ComponentParamDef param,
+  ) {
+    final currentValue = props.paramOverrides[param.key] ?? param.defaultValue;
+    final isOverridden = props.paramOverrides.containsKey(param.key);
+
+    Widget editor = switch (param.type) {
+      ParamType.string => TextEditor(
+          value: currentValue as String? ?? '',
+          onChanged: (v) => _setParamOverride(param.key, v),
+        ),
+      ParamType.number => NumberEditor(
+          value: (currentValue as num?)?.toDouble(),
+          onChanged: (v) => _setParamOverride(param.key, v),
+          allowDecimals: true,
+        ),
+      ParamType.boolean => BooleanEditor(
+          value: currentValue as bool? ?? false,
+          onChanged: (v) => _setParamOverride(param.key, v),
+        ),
+      ParamType.color => ColorPickerPopover(
+          initialColor: _parseColor(currentValue is String ? currentValue : null),
+          onChanged: (color) => _setParamOverride(param.key, _colorToHex(color)),
+          child: ButtonEditor(
+            displayValue: _formatColorDisplay(currentValue is String ? currentValue : null),
+            prefix: ColorSwatchPrefix(color: _parseColor(currentValue is String ? currentValue : null)),
+            onClear: isOverridden ? () => _resetParam(param.key) : null,
+          ),
+        ),
+      ParamType.enumValue => DropdownEditor<String>(
+          value: currentValue as String? ?? param.enumOptions?.first ?? '',
+          items: (param.enumOptions ?? [])
+              .map((o) => DropdownItem(value: o, label: o))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) _setParamOverride(param.key, v);
+          },
+        ),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          // Override indicator
+          if (isOverridden)
+            GestureDetector(
+              onTap: () => _resetParam(param.key),
+              child: Tooltip(
+                message: 'Reset to default',
+                child: Container(
+                  width: 4,
+                  height: 24,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: context.colors.accent.purple.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ),
+          Expanded(
+            child: PropertyField(
+              label: param.key,
+              child: editor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setParamOverride(String key, dynamic value) {
+    store.applyPatches([
+      SetProp(id: nodeId, path: '/props/paramOverrides/$key', value: value),
+    ], label: 'Set parameter');
+  }
+
+  void _resetParam(String key) {
+    // Setting to null removes the override, reverting to the parameter default
+    store.applyPatches([
+      SetProp(id: nodeId, path: '/props/paramOverrides/$key', value: null),
+    ], label: 'Reset parameter');
   }
 
   /// Find all slots in a component by walking its node tree.
