@@ -52,13 +52,16 @@ class DslGrammar {
 
   /// Style properties (shorthand → full name).
   static const styleProps = {
-    'bg': 'background', // bg #FFF | bg primary
+    'bg': 'background', // bg #FFF | bg {token} | bg linear(90,#F00,#00F)
     'fg': 'foreground', // fg #000 | fg text_primary
     'r': 'radius', // r 8 | r 8,4,4,8
     'border': 'border', // border 1 #000 | border 2 primary
     'shadow': 'shadow', // shadow 0,4,8,0 #00000033
     'opacity': 'opacity', // opacity 0.5
   };
+
+  /// Gradient types supported.
+  static const gradientTypes = ['linear', 'radial'];
 
   /// Text-specific properties.
   static const textProps = {

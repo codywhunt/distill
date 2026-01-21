@@ -1,10 +1,10 @@
 {
   "status": "idle",
-  "iteration": 3,
+  "iteration": 4,
   "currentHypothesis": null,
   "baseline": {
     "tokenEfficiency": 0.25,
-    "patternCoverage": 0.78,
+    "patternCoverage": 0.80,
     "roundTripFidelity": 1.0,
     "testsPassing": 883
   },
@@ -27,11 +27,24 @@
       "outcome": "improved",
       "details": "Added lh, ls, and decor properties to DSL grammar, parser, and exporter. Pattern coverage improved from 0.69 to 0.78 (+9%).",
       "deltaPatterns": 3,
-      "commit": "pending",
+      "commit": "93feadc",
       "timestamp": "2026-01-21T03:30:00Z",
       "learnings": [
         "IR model already supported properties that DSL did not expose - check for these gaps",
         "Shorthand property names (lh, ls, decor) follow existing conventions"
+      ]
+    },
+    {
+      "id": "iter_3",
+      "hypothesis": "Add DSL support for linear gradients",
+      "outcome": "improved",
+      "details": "Added linear gradient parsing/export with syntax: bg linear(angle,#color1,#color2). Pattern coverage improved from 0.78 to 0.80 (+2%).",
+      "deltaPatterns": 1,
+      "commit": "pending",
+      "timestamp": "2026-01-21T03:45:00Z",
+      "learnings": [
+        "GradientFill was already in IR but not exposed in DSL",
+        "Compact syntax linear(90,#F00,#00F) is efficient for AI generation"
       ]
     }
   ],
@@ -41,6 +54,7 @@
     "Token efficiency improvements should not sacrifice readability",
     "Always verify round-trip fidelity before committing",
     "Tests must be updated when implementation architecture changes",
-    "IR model may support properties that DSL does not yet expose - check for these gaps"
+    "IR model may support properties that DSL does not yet expose - check for these gaps",
+    "Compact function-style syntax works well for complex values like gradients"
   ]
 }

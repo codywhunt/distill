@@ -285,7 +285,9 @@ class DslExporter {
         SolidFill(color: HexColor(hex: final h)) => h,
         SolidFill(color: TokenColor(tokenRef: final t)) => '{$t}',
         TokenFill(tokenRef: final t) => '{$t}',
-        GradientFill() => null, // Gradients not supported in DSL v1
+        GradientFill(gradientType: GradientType.linear) =>
+          _exportLinearGradient(fill as GradientFill),
+        GradientFill() => null, // Radial gradients not supported in DSL v1
       };
       if (bgValue != null) {
         props.add('bg $bgValue');
@@ -422,6 +424,29 @@ class DslExporter {
       return value.toInt().toString();
     }
     return value.toString();
+  }
+
+  /// Export linear gradient to DSL format.
+  /// linear(angle,#color1,#color2,...) or linear(#color1,#color2,...) if angle is 180
+  String _exportLinearGradient(GradientFill gradient) {
+    final buffer = StringBuffer('linear(');
+
+    // Include angle if not default (180)
+    if (gradient.angle != 180) {
+      buffer.write('${_formatNumber(gradient.angle)},');
+    }
+
+    // Export color stops (positions are evenly distributed, so we only need colors)
+    final colors = gradient.stops.map((stop) {
+      return switch (stop.color) {
+        HexColor(hex: final h) => h,
+        TokenColor(tokenRef: final t) => '{$t}',
+      };
+    }).join(',');
+    buffer.write(colors);
+    buffer.write(')');
+
+    return buffer.toString();
   }
 
   /// Export NumericValue to DSL format.

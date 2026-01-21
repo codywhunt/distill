@@ -417,16 +417,21 @@ class DslParser {
     Fill? fill;
     if (props['bg'] != null) {
       final bgValue = props['bg']!;
-      final tokenPath = _extractTokenPath(bgValue);
-      if (tokenPath != null) {
-        // Token reference: {color.primary} or $primary
-        fill = TokenFill(tokenPath);
-      } else if (bgValue.startsWith('#')) {
-        // Hex color: #007AFF
-        fill = SolidFill(HexColor(bgValue));
+      if (bgValue.startsWith('linear(')) {
+        // Linear gradient: linear(90,#FF0000,#0000FF) or linear(#FF0000,#0000FF)
+        fill = _parseLinearGradient(bgValue);
       } else {
-        // Assume bare token name (backwards compat)
-        fill = TokenFill(bgValue);
+        final tokenPath = _extractTokenPath(bgValue);
+        if (tokenPath != null) {
+          // Token reference: {color.primary} or $primary
+          fill = TokenFill(tokenPath);
+        } else if (bgValue.startsWith('#')) {
+          // Hex color: #007AFF
+          fill = SolidFill(HexColor(bgValue));
+        } else {
+          // Assume bare token name (backwards compat)
+          fill = TokenFill(bgValue);
+        }
       }
     }
 
@@ -576,6 +581,57 @@ class DslParser {
     return TextDecoration.values.firstWhere(
       (e) => e.name == value,
       orElse: () => TextDecoration.none,
+    );
+  }
+
+  /// Parse linear gradient: linear(90,#FF0000,#0000FF) or linear(#FF0000,#0000FF)
+  GradientFill? _parseLinearGradient(String value) {
+    // Extract content inside linear(...)
+    if (!value.startsWith('linear(') || !value.endsWith(')')) {
+      return null;
+    }
+    final content = value.substring(7, value.length - 1); // Remove "linear(" and ")"
+    final parts = content.split(',').map((s) => s.trim()).toList();
+
+    if (parts.isEmpty) return null;
+
+    // Check if first part is an angle (number) or a color (#...)
+    double angle = 180; // Default: top to bottom
+    int colorStartIdx = 0;
+
+    final firstPart = parts[0];
+    if (!firstPart.startsWith('#') && double.tryParse(firstPart) != null) {
+      // First part is an angle
+      angle = double.parse(firstPart);
+      colorStartIdx = 1;
+    }
+
+    // Parse color stops
+    final colorParts = parts.sublist(colorStartIdx);
+    if (colorParts.length < 2) return null; // Need at least 2 colors
+
+    final stops = <GradientStop>[];
+    for (var i = 0; i < colorParts.length; i++) {
+      final colorStr = colorParts[i];
+      // Distribute positions evenly by default
+      final position = i / (colorParts.length - 1);
+      if (colorStr.startsWith('#')) {
+        stops.add(GradientStop(position: position, color: HexColor(colorStr)));
+      } else {
+        // Token color reference
+        final tokenPath = _extractTokenPath(colorStr);
+        if (tokenPath != null) {
+          stops.add(GradientStop(position: position, color: TokenColor(tokenPath)));
+        }
+      }
+    }
+
+    if (stops.length < 2) return null;
+
+    return GradientFill(
+      gradientType: GradientType.linear,
+      stops: stops,
+      angle: angle,
     );
   }
 

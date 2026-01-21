@@ -150,8 +150,8 @@ class ExpressivenessScorer {
       name: 'Linear Gradient',
       category: 'Style',
       description: 'Linear gradient background',
-      supported: false,
-      priority: PatternPriority.high,
+      supported: true,
+      dslExample: 'container - bg linear(90,#FF0000,#0000FF)',
     ),
     UIPattern(
       id: 'style.radialGradient',
