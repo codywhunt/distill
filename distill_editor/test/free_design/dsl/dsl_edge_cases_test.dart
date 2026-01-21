@@ -289,14 +289,15 @@ frame Test
   });
 
   group('Color Parsing Edge Cases', () {
-    test('handles 3-character hex color', () {
+    test('handles 3-character hex color (expands to 6-char)', () {
+      // Parser expands 3-char to 6-char for consistent storage
       final result = parser.parse('''
 dsl:1
 frame Test
   container#root - bg #FFF
 ''');
       final fill = result.nodes['root']!.style.fill as SolidFill;
-      expect((fill.color as HexColor).hex, equals('#FFF'));
+      expect((fill.color as HexColor).hex, equals('#FFFFFF'));
     });
 
     test('handles 6-character hex color', () {
@@ -309,14 +310,49 @@ frame Test
       expect((fill.color as HexColor).hex, equals('#FFFFFF'));
     });
 
-    test('handles lowercase hex color', () {
+    test('handles lowercase hex color (normalizes to uppercase)', () {
+      // Parser normalizes hex colors to uppercase for consistency
       final result = parser.parse('''
 dsl:1
 frame Test
   container#root - bg #ff5500
 ''');
       final fill = result.nodes['root']!.style.fill as SolidFill;
-      expect((fill.color as HexColor).hex, equals('#ff5500'));
+      expect((fill.color as HexColor).hex, equals('#FF5500'));
+    });
+
+    test('round-trips 3-char hex color', () {
+      // 3-char input should round-trip back to 3-char (for compressible colors)
+      final result = parser.parse('''
+dsl:1
+frame Test
+  container#root - bg #FFF
+''');
+      final doc = EditorDocument(
+        documentId: 'test',
+        frames: {'frame1': result.frame},
+        nodes: result.nodes,
+      );
+      final dsl = const DslExporter().exportFrame(doc, 'frame1');
+      // Exporter should output short form for compressible colors
+      expect(dsl, contains('bg #FFF'));
+    });
+
+    test('round-trips non-compressible hex color', () {
+      // Non-compressible colors like #123456 stay full-length
+      final result = parser.parse('''
+dsl:1
+frame Test
+  container#root - bg #123456
+''');
+      final doc = EditorDocument(
+        documentId: 'test',
+        frames: {'frame1': result.frame},
+        nodes: result.nodes,
+      );
+      final dsl = const DslExporter().exportFrame(doc, 'frame1');
+      // Exporter should output full form for non-compressible colors
+      expect(dsl, contains('bg #123456'));
     });
   });
 

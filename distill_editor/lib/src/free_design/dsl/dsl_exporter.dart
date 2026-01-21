@@ -282,7 +282,7 @@ class DslExporter {
     final fill = style.fill;
     if (fill != null) {
       final bgValue = switch (fill) {
-        SolidFill(color: HexColor(hex: final h)) => h,
+        SolidFill(color: HexColor(hex: final h)) => _compressHex(h),
         SolidFill(color: TokenColor(tokenRef: final t)) => '{$t}',
         TokenFill(tokenRef: final t) => '{$t}',
         GradientFill(gradientType: GradientType.linear) =>
@@ -316,7 +316,7 @@ class DslExporter {
     final stroke = style.stroke;
     if (stroke != null) {
       final colorStr = switch (stroke.color) {
-        HexColor(hex: final h) => h,
+        HexColor(hex: final h) => _compressHex(h),
         TokenColor(tokenRef: final t) => '{$t}',
       };
       props.add('border ${_formatNumber(stroke.width)} $colorStr');
@@ -326,7 +326,7 @@ class DslExporter {
     final shadow = style.shadow;
     if (shadow != null) {
       final colorStr = switch (shadow.color) {
-        HexColor(hex: final h) => h,
+        HexColor(hex: final h) => _compressHex(h),
         TokenColor(tokenRef: final t) => '{$t}',
       };
       props.add('shadow ${_formatNumber(shadow.offsetX)},${_formatNumber(shadow.offsetY)},'
@@ -438,6 +438,46 @@ class DslExporter {
     return value.toString();
   }
 
+  /// Compress hex color to 3/4 char format when possible.
+  /// Converts #RRGGBB to #RGB when R1==R2, G1==G2, B1==B2.
+  /// Converts #RRGGBBAA to #RGBA when the same pattern applies.
+  String _compressHex(String hex) {
+    if (!hex.startsWith('#')) return hex;
+    final cleanHex = hex.substring(1).toUpperCase();
+
+    // 6-char: #RRGGBB -> #RGB if compressible
+    if (cleanHex.length == 6) {
+      final r1 = cleanHex[0];
+      final r2 = cleanHex[1];
+      final g1 = cleanHex[2];
+      final g2 = cleanHex[3];
+      final b1 = cleanHex[4];
+      final b2 = cleanHex[5];
+      if (r1 == r2 && g1 == g2 && b1 == b2) {
+        return '#$r1$g1$b1';
+      }
+      return '#$cleanHex';
+    }
+
+    // 8-char: #RRGGBBAA -> #RGBA if compressible
+    if (cleanHex.length == 8) {
+      final r1 = cleanHex[0];
+      final r2 = cleanHex[1];
+      final g1 = cleanHex[2];
+      final g2 = cleanHex[3];
+      final b1 = cleanHex[4];
+      final b2 = cleanHex[5];
+      final a1 = cleanHex[6];
+      final a2 = cleanHex[7];
+      if (r1 == r2 && g1 == g2 && b1 == b2 && a1 == a2) {
+        return '#$r1$g1$b1$a1';
+      }
+      return '#$cleanHex';
+    }
+
+    return hex;
+  }
+
   /// Export linear gradient to DSL format.
   /// linear(angle,#color1,#color2,...) or linear(#color1,#color2,...) if angle is 180
   String _exportLinearGradient(GradientFill gradient) {
@@ -451,7 +491,7 @@ class DslExporter {
     // Export color stops (positions are evenly distributed, so we only need colors)
     final colors = gradient.stops.map((stop) {
       return switch (stop.color) {
-        HexColor(hex: final h) => h,
+        HexColor(hex: final h) => _compressHex(h),
         TokenColor(tokenRef: final t) => '{$t}',
       };
     }).join(',');
@@ -469,7 +509,7 @@ class DslExporter {
     // Export color stops (positions are evenly distributed, so we only need colors)
     final colors = gradient.stops.map((stop) {
       return switch (stop.color) {
-        HexColor(hex: final h) => h,
+        HexColor(hex: final h) => _compressHex(h),
         TokenColor(tokenRef: final t) => '{$t}',
       };
     }).join(',');

@@ -429,8 +429,8 @@ class DslParser {
           // Token reference: {color.primary} or $primary
           fill = TokenFill(tokenPath);
         } else if (bgValue.startsWith('#')) {
-          // Hex color: #007AFF
-          fill = SolidFill(HexColor(bgValue));
+          // Hex color: #007AFF or #07F (3-char shorthand)
+          fill = SolidFill(HexColor(_normalizeHex(bgValue)));
         } else {
           // Assume bare token name (backwards compat)
           fill = TokenFill(bgValue);
@@ -625,7 +625,7 @@ class DslParser {
       // Distribute positions evenly by default
       final position = i / (colorParts.length - 1);
       if (colorStr.startsWith('#')) {
-        stops.add(GradientStop(position: position, color: HexColor(colorStr)));
+        stops.add(GradientStop(position: position, color: HexColor(_normalizeHex(colorStr))));
       } else {
         // Token color reference
         final tokenPath = _extractTokenPath(colorStr);
@@ -662,7 +662,7 @@ class DslParser {
       // Distribute positions evenly by default
       final position = i / (parts.length - 1);
       if (colorStr.startsWith('#')) {
-        stops.add(GradientStop(position: position, color: HexColor(colorStr)));
+        stops.add(GradientStop(position: position, color: HexColor(_normalizeHex(colorStr))));
       } else {
         // Token color reference
         final tokenPath = _extractTokenPath(colorStr);
@@ -720,8 +720,8 @@ class DslParser {
       // Token reference: {color.outline} or $primary
       color = TokenColor(tokenPath);
     } else if (colorStr.startsWith('#')) {
-      // Hex color: #000000
-      color = HexColor(colorStr);
+      // Hex color: #000000 or #000 (3-char shorthand)
+      color = HexColor(_normalizeHex(colorStr));
     } else {
       // Assume bare token name (backwards compat)
       color = TokenColor(colorStr);
@@ -751,7 +751,7 @@ class DslParser {
     if (tokenPath != null) {
       color = TokenColor(tokenPath);
     } else if (colorStr.startsWith('#')) {
-      color = HexColor(colorStr);
+      color = HexColor(_normalizeHex(colorStr));
     } else {
       color = TokenColor(colorStr);
     }
@@ -768,6 +768,33 @@ class DslParser {
   // ===========================================================================
   // Utilities
   // ===========================================================================
+
+  /// Normalize hex color to 6/8 char format.
+  /// Converts 3-char (#RGB) to 6-char (#RRGGBB) and 4-char (#RGBA) to 8-char (#RRGGBBAA).
+  String _normalizeHex(String hex) {
+    if (!hex.startsWith('#')) return hex;
+    final cleanHex = hex.substring(1);
+
+    // 3-char: #RGB -> #RRGGBB
+    if (cleanHex.length == 3) {
+      final r = cleanHex[0];
+      final g = cleanHex[1];
+      final b = cleanHex[2];
+      return '#$r$r$g$g$b$b'.toUpperCase();
+    }
+
+    // 4-char: #RGBA -> #RRGGBBAA
+    if (cleanHex.length == 4) {
+      final r = cleanHex[0];
+      final g = cleanHex[1];
+      final b = cleanHex[2];
+      final a = cleanHex[3];
+      return '#$r$r$g$g$b$b$a$a'.toUpperCase();
+    }
+
+    // Already full-length, normalize to uppercase
+    return '#${cleanHex.toUpperCase()}';
+  }
 
   int _getIndent(String line) {
     return line.length - line.trimLeft().length;

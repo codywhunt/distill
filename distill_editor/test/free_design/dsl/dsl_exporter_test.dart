@@ -196,9 +196,10 @@ void main() {
 
   group('Style Property Export', () {
     test('exports hex background', () {
+      // #FF5500 compresses to #F50 since R1==R2, G1==G2, B1==B2
       final doc = _createDocWithFill(SolidFill(const HexColor('#FF5500')));
       final dsl = exporter.exportFrame(doc, 'frame1');
-      expect(dsl, contains('bg #FF5500'));
+      expect(dsl, contains('bg #F50'));
     });
 
     test('exports token background', () {
@@ -237,9 +238,10 @@ void main() {
     });
 
     test('exports border', () {
+      // #CCCCCC compresses to #CCC since R1==R2, G1==G2, B1==B2
       final doc = _createDocWithStroke(Stroke(color: const HexColor('#CCCCCC'), width: 1));
       final dsl = exporter.exportFrame(doc, 'frame1');
-      expect(dsl, contains('border 1 #CCCCCC'));
+      expect(dsl, contains('border 1 #CCC'));
     });
 
     test('exports border with token color', () {
