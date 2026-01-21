@@ -448,6 +448,11 @@ class DslParser {
       stroke = _parseStroke(props['border']!);
     }
 
+    Shadow? shadow;
+    if (props['shadow'] != null) {
+      shadow = _parseShadow(props['shadow']!);
+    }
+
     final opacity = double.tryParse(props['opacity'] ?? '1') ?? 1.0;
     final visible = props['visible'] != 'false';
 
@@ -455,6 +460,7 @@ class DslParser {
       fill: fill,
       stroke: stroke,
       cornerRadius: cornerRadius,
+      shadow: shadow,
       opacity: opacity,
       visible: visible,
     );
@@ -722,6 +728,41 @@ class DslParser {
     }
 
     return Stroke(color: color, width: width);
+  }
+
+  Shadow? _parseShadow(String value) {
+    // shadow 0,4,8,0 #00000033 | shadow 0,4,8,0 {color.shadow}
+    final parts = value.split(' ');
+    if (parts.isEmpty) return null;
+
+    // Parse offset, blur, spread: "0,4,8,0"
+    final numbers = parts[0].split(',').map((s) => double.tryParse(s.trim()) ?? 0).toList();
+    if (numbers.length < 4) return null;
+
+    final offsetX = numbers[0];
+    final offsetY = numbers[1];
+    final blur = numbers[2];
+    final spread = numbers[3];
+
+    // Parse color (required for shadow)
+    final colorStr = parts.length > 1 ? parts[1] : '#00000033';
+    ColorValue color;
+    final tokenPath = _extractTokenPath(colorStr);
+    if (tokenPath != null) {
+      color = TokenColor(tokenPath);
+    } else if (colorStr.startsWith('#')) {
+      color = HexColor(colorStr);
+    } else {
+      color = TokenColor(colorStr);
+    }
+
+    return Shadow(
+      color: color,
+      offsetX: offsetX,
+      offsetY: offsetY,
+      blur: blur,
+      spread: spread,
+    );
   }
 
   // ===========================================================================

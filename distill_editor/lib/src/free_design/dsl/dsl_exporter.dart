@@ -322,6 +322,17 @@ class DslExporter {
       props.add('border ${_formatNumber(stroke.width)} $colorStr');
     }
 
+    // Shadow
+    final shadow = style.shadow;
+    if (shadow != null) {
+      final colorStr = switch (shadow.color) {
+        HexColor(hex: final h) => h,
+        TokenColor(tokenRef: final t) => '{$t}',
+      };
+      props.add('shadow ${_formatNumber(shadow.offsetX)},${_formatNumber(shadow.offsetY)},'
+          '${_formatNumber(shadow.blur)},${_formatNumber(shadow.spread)} $colorStr');
+    }
+
     // Opacity
     if (style.opacity < 1.0) {
       props.add('opacity ${style.opacity}');

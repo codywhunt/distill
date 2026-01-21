@@ -279,6 +279,30 @@ frame Test
   container#root - bg radial({color.primary},{color.secondary})
 ''');
     });
+
+    test('drop shadow', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - shadow 0,4,8,0 #00000033
+''');
+    });
+
+    test('shadow with custom values', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - shadow 2,6,12,4 #000000
+''');
+    });
+
+    test('shadow with token color', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - shadow 0,4,8,0 {color.shadow}
+''');
+    });
   });
 
   group('Node Type Round-Trips', () {
@@ -559,6 +583,20 @@ void _compareStyles(NodeStyle a, NodeStyle b, String nodeId) {
     _compareNumericValues(a.cornerRadius!.topRight, b.cornerRadius!.topRight, '$nodeId.r.tr');
     _compareNumericValues(a.cornerRadius!.bottomRight, b.cornerRadius!.bottomRight, '$nodeId.r.br');
     _compareNumericValues(a.cornerRadius!.bottomLeft, b.cornerRadius!.bottomLeft, '$nodeId.r.bl');
+  }
+
+  // Shadow comparison
+  if (a.shadow != null) {
+    expect(b.shadow, isNotNull, reason: 'Shadow missing for $nodeId');
+    expect(b.shadow!.offsetX, equals(a.shadow!.offsetX),
+        reason: 'Shadow offsetX mismatch for $nodeId');
+    expect(b.shadow!.offsetY, equals(a.shadow!.offsetY),
+        reason: 'Shadow offsetY mismatch for $nodeId');
+    expect(b.shadow!.blur, equals(a.shadow!.blur),
+        reason: 'Shadow blur mismatch for $nodeId');
+    expect(b.shadow!.spread, equals(a.shadow!.spread),
+        reason: 'Shadow spread mismatch for $nodeId');
+    _compareColors(a.shadow!.color, b.shadow!.color, '$nodeId.shadow');
   }
 
   // Opacity
