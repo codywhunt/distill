@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import 'workspace_state.dart';
 import 'workspace_layout_state.dart';
-// import 'components/side_navigation.dart';
 import 'components/breadcrumb_bar.dart';
 import 'components/resizable_panel.dart';
 import 'components/animated_panel_wrapper.dart';
@@ -60,9 +59,6 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
         // Main layout
         Row(
           children: [
-            // Side navigation (always visible)
-            // const SideNavigation(),
-
             // Left panel with optimized resize + animation
             _buildLeftPanel(context, currentModule),
 

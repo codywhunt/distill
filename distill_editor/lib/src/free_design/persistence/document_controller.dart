@@ -11,22 +11,36 @@ import 'document_persistence_service.dart';
 /// - Save/load operations
 /// - Error handling
 /// - State reset coordination
+/// - Unsaved changes protection
 class DocumentController {
   final EditorDocumentStore store;
   final DocumentPersistenceService persistence;
   final VoidCallback? onDocumentChanged;
 
+  /// Callback to confirm discarding unsaved changes.
+  ///
+  /// Return `true` to proceed with the operation, `false` to cancel.
+  /// If not provided, operations will proceed without confirmation.
+  final Future<bool> Function()? confirmDiscardChanges;
+
   DocumentController({
     required this.store,
     required this.persistence,
     this.onDocumentChanged,
+    this.confirmDiscardChanges,
   });
 
   /// Create a new empty document.
   ///
+  /// If there are unsaved changes and [confirmDiscardChanges] is provided,
+  /// the user will be prompted to confirm before proceeding.
+  ///
   /// Clears the current document, resets undo history, and clears the save target.
   Future<void> newDocument() async {
-    // TODO: Check unsaved changes first (future enhancement)
+    if (store.hasUnsavedChanges) {
+      final confirmed = await confirmDiscardChanges?.call() ?? true;
+      if (!confirmed) return;
+    }
     store.replaceDocument(EditorDocument.empty(), clearUndo: true);
     persistence.clearSaveTarget();
     onDocumentChanged?.call();
@@ -39,16 +53,26 @@ class DocumentController {
   ///
   /// Returns true if save was successful, false if user cancelled.
   Future<bool> saveDocument({bool saveAs = false}) async {
-    return persistence.save(store.document, saveAs: saveAs);
+    final success = await persistence.save(store.document, saveAs: saveAs);
+    if (success) {
+      store.markSaved();
+    }
+    return success;
   }
 
   /// Load a document from file.
+  ///
+  /// If there are unsaved changes and [confirmDiscardChanges] is provided,
+  /// the user will be prompted to confirm before proceeding.
   ///
   /// Shows the file picker and loads the selected document.
   /// Returns true if load was successful, false if user cancelled.
   /// Throws [DocumentLoadException] on invalid file.
   Future<bool> loadDocument() async {
-    // TODO: Check unsaved changes first (future enhancement)
+    if (store.hasUnsavedChanges) {
+      final confirmed = await confirmDiscardChanges?.call() ?? true;
+      if (!confirmed) return false;
+    }
     final doc = await persistence.load();
     if (doc == null) return false; // User cancelled
     store.replaceDocument(doc, clearUndo: true);

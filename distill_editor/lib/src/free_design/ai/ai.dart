@@ -11,7 +11,6 @@ export 'llm_client.dart';
 export 'patch_ops_parser.dart';
 
 // Clients
-export 'clients/mock_client.dart';
 export 'clients/openai_client.dart';
 
 // Prompts

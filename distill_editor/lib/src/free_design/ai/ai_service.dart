@@ -2,6 +2,8 @@ import 'dart:developer' as developer;
 import 'dart:io' show Platform;
 import 'dart:ui';
 
+import 'package:meta/meta.dart';
+
 import '../compiler/outline_compiler.dart';
 import '../dsl/dsl_parser.dart';
 import '../models/editor_document.dart';
@@ -10,7 +12,6 @@ import '../models/node.dart';
 import '../patch/patch_op.dart';
 import '../patch/patch_validator.dart';
 import '../store/editor_document_store.dart';
-import 'clients/mock_client.dart';
 import 'clients/openai_client.dart';
 import 'frame_generator.dart';
 import 'llm_client.dart';
@@ -71,8 +72,12 @@ class FreeDesignAiService {
   }
 
   /// Create an AI service with a mock client for testing.
-  factory FreeDesignAiService.mock([MockLlmClient? client]) {
-    return FreeDesignAiService._(client ?? MockLlmClient());
+  ///
+  /// Pass a custom [LlmClient] to control responses, or use the default
+  /// which returns a simple frame JSON.
+  @visibleForTesting
+  factory FreeDesignAiService.mock([LlmClient? client]) {
+    return FreeDesignAiService._(client ?? _DefaultMockLlmClient());
   }
 
   /// Generate a frame from a natural language description.
@@ -631,5 +636,43 @@ class DslGenerationException implements Exception {
       buffer.writeln('Parse error: $parseError');
     }
     return buffer.toString();
+  }
+}
+
+/// Default mock LLM client for testing.
+///
+/// Returns a simple frame JSON after a brief delay.
+class _DefaultMockLlmClient implements LlmClient {
+  @override
+  Future<String> complete({
+    required String system,
+    required String user,
+    int maxTokens = 4096,
+    double? temperature,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    return '''
+```json
+{
+  "frame": {
+    "id": "frame_mock",
+    "name": "Mock Frame",
+    "rootNodeId": "node_root",
+    "canvas": {"position": {"x": 0, "y": 0}, "size": {"width": 375, "height": 812}}
+  },
+  "nodes": {
+    "node_root": {
+      "id": "node_root",
+      "name": "Root",
+      "type": "container",
+      "childIds": [],
+      "layout": {"size": {"width": {"mode": "fill"}, "height": {"mode": "fill"}}},
+      "style": {"fill": {"type": "solid", "color": {"hex": "#FFFFFF"}}},
+      "props": {}
+    }
+  }
+}
+```
+''';
   }
 }

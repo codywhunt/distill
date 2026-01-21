@@ -43,6 +43,9 @@ class EditorDocumentStore extends ChangeNotifier {
   // Active grouping context
   String? _activeGroupId;
 
+  /// Undo stack depth at last save. Used to determine if there are unsaved changes.
+  int _savedUndoDepth = 0;
+
   EditorDocumentStore({
     required EditorDocument document,
     PatchApplier applier = const PatchApplier(),
@@ -153,6 +156,7 @@ class EditorDocumentStore extends ChangeNotifier {
     if (clearUndo) {
       _undoStack.clear();
       _redoStack.clear();
+      _savedUndoDepth = 0; // Reset save tracking for fresh document
     }
     notifyListeners();
   }
@@ -171,6 +175,19 @@ class EditorDocumentStore extends ChangeNotifier {
 
   /// Whether redo is available.
   bool get canRedo => _redoStack.isNotEmpty;
+
+  /// Whether the document has unsaved changes since the last save or load.
+  ///
+  /// This tracks the undo stack depth at the last save point. Changes exist
+  /// if the current undo stack depth differs from the saved depth.
+  bool get hasUnsavedChanges => _undoStack.length != _savedUndoDepth;
+
+  /// Mark the current state as saved.
+  ///
+  /// Call this after successfully saving the document to disk.
+  void markSaved() {
+    _savedUndoDepth = _undoStack.length;
+  }
 
   /// Start grouping operations under a single undo entry.
   void beginGroup(String groupId) => _activeGroupId = groupId;

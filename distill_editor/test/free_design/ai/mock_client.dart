@@ -1,4 +1,4 @@
-import '../llm_client.dart';
+import 'package:distill_editor/src/free_design/ai/llm_client.dart';
 
 /// Mock LLM client for testing.
 class MockLlmClient implements LlmClient {
