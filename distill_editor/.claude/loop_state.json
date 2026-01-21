@@ -1,18 +1,32 @@
 {
   "status": "idle",
-  "iteration": 0,
+  "iteration": 1,
   "currentHypothesis": null,
   "baseline": {
     "tokenEfficiency": 0.25,
     "patternCoverage": 0.69,
     "roundTripFidelity": 1.0,
-    "testsPassing": 0
+    "testsPassing": 883
   },
-  "history": [],
+  "history": [
+    {
+      "id": "iter_1",
+      "hypothesis": "Update DragSession tests to reflect architecture change where generatePatches() no longer handles move operations",
+      "outcome": "improved",
+      "details": "Fixed 2 failing tests by updating expectations to match new architecture - generatePatches() now only handles resize operations, move operations handled by canvas_state.dart",
+      "commit": "pending",
+      "timestamp": "2026-01-20T00:00:00Z",
+      "learnings": [
+        "Tests must be updated when implementation architecture changes",
+        "Always trace test failures back to implementation changes"
+      ]
+    }
+  ],
   "learnings": [
     "Parser changes require exporter changes for round-trip fidelity",
     "New DSL constructs need tests before implementation",
     "Token efficiency improvements should not sacrifice readability",
-    "Always verify round-trip fidelity before committing"
+    "Always verify round-trip fidelity before committing",
+    "Tests must be updated when implementation architecture changes"
   ]
 }
