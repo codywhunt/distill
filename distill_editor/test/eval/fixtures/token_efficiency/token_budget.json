@@ -1,0 +1,106 @@
+{
+  "description": "Token budget targets for DSL efficiency",
+  "version": "1.0",
+  "targets": {
+    "tokenRatio": {
+      "description": "DSL tokens / equivalent JSON tokens",
+      "target": 0.25,
+      "warning": 0.30,
+      "critical": 0.40
+    },
+    "avgTokensPerNode": {
+      "description": "Average tokens per DSL node",
+      "target": 8.0,
+      "warning": 12.0,
+      "critical": 16.0
+    },
+    "tokensPerLine": {
+      "description": "Average tokens per line of DSL",
+      "target": 6.0,
+      "warning": 8.0,
+      "critical": 10.0
+    }
+  },
+  "constructBudgets": {
+    "container": {
+      "description": "Basic container node",
+      "minTokens": 1,
+      "avgTokens": 4,
+      "maxTokens": 12
+    },
+    "column": {
+      "description": "Vertical auto-layout container",
+      "minTokens": 1,
+      "avgTokens": 4,
+      "maxTokens": 10
+    },
+    "row": {
+      "description": "Horizontal auto-layout container",
+      "minTokens": 1,
+      "avgTokens": 4,
+      "maxTokens": 10
+    },
+    "text": {
+      "description": "Text node with content",
+      "minTokens": 2,
+      "avgTokens": 5,
+      "maxTokens": 12
+    },
+    "icon": {
+      "description": "Icon node",
+      "minTokens": 2,
+      "avgTokens": 4,
+      "maxTokens": 8
+    },
+    "img": {
+      "description": "Image node",
+      "minTokens": 2,
+      "avgTokens": 5,
+      "maxTokens": 10
+    },
+    "spacer": {
+      "description": "Spacer node",
+      "minTokens": 1,
+      "avgTokens": 2,
+      "maxTokens": 4
+    },
+    "use": {
+      "description": "Component instance",
+      "minTokens": 2,
+      "avgTokens": 3,
+      "maxTokens": 8
+    }
+  },
+  "propertyBudgets": {
+    "w": { "tokens": 2, "description": "Width" },
+    "h": { "tokens": 2, "description": "Height" },
+    "gap": { "tokens": 2, "description": "Gap spacing" },
+    "pad": { "tokens": 2, "description": "Padding (uniform)" },
+    "pad_symmetric": { "tokens": 3, "description": "Padding (symmetric)" },
+    "pad_all": { "tokens": 5, "description": "Padding (all sides)" },
+    "bg": { "tokens": 2, "description": "Background color" },
+    "r": { "tokens": 2, "description": "Border radius" },
+    "border": { "tokens": 3, "description": "Border stroke" },
+    "align": { "tokens": 2, "description": "Alignment" },
+    "pos_abs": { "tokens": 5, "description": "Absolute position with coords" },
+    "size": { "tokens": 2, "description": "Font size" },
+    "weight": { "tokens": 2, "description": "Font weight" },
+    "color": { "tokens": 2, "description": "Color" },
+    "opacity": { "tokens": 2, "description": "Opacity" }
+  },
+  "defaultOmissions": {
+    "description": "Properties omitted when at default value to save tokens",
+    "omitted": [
+      { "property": "w", "defaultValue": "hug", "savedTokens": 2 },
+      { "property": "h", "defaultValue": "hug", "savedTokens": 2 },
+      { "property": "size", "defaultValue": "14", "savedTokens": 2, "nodeType": "text" },
+      { "property": "weight", "defaultValue": "400", "savedTokens": 2, "nodeType": "text" },
+      { "property": "iconSet", "defaultValue": "material", "savedTokens": 2, "nodeType": "icon" },
+      { "property": "fit", "defaultValue": "cover", "savedTokens": 2, "nodeType": "img" },
+      { "property": "flex", "defaultValue": "1", "savedTokens": 2, "nodeType": "spacer" },
+      { "property": "align", "defaultValue": "start,start", "savedTokens": 2 },
+      { "property": "opacity", "defaultValue": "1.0", "savedTokens": 2 },
+      { "property": "visible", "defaultValue": "true", "savedTokens": 2 }
+    ]
+  }
+}

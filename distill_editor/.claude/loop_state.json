@@ -1,0 +1,18 @@
+{
+  "status": "idle",
+  "iteration": 0,
+  "currentHypothesis": null,
+  "baseline": {
+    "tokenEfficiency": 0.25,
+    "patternCoverage": 0.69,
+    "roundTripFidelity": 1.0,
+    "testsPassing": 0
+  },
+  "history": [],
+  "learnings": [
+    "Parser changes require exporter changes for round-trip fidelity",
+    "New DSL constructs need tests before implementation",
+    "Token efficiency improvements should not sacrifice readability",
+    "Always verify round-trip fidelity before committing"
+  ]
+}

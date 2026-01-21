@@ -1,0 +1,367 @@
+# UI Pattern Catalog for Expressiveness Evaluation
+# This catalog defines all UI patterns the DSL should support
+
+version: "1.0"
+lastUpdated: "2025-01-20"
+
+categories:
+  - name: Layout
+    description: Structural layout patterns
+    patterns:
+      - id: layout.column
+        name: Vertical Stack
+        description: Stack children vertically with configurable gap
+        supported: true
+        priority: critical
+
+      - id: layout.row
+        name: Horizontal Stack
+        description: Stack children horizontally with configurable gap
+        supported: true
+        priority: critical
+
+      - id: layout.stack
+        name: Absolute Stack
+        description: Position children absolutely within a container
+        supported: true
+        priority: critical
+
+      - id: layout.padding
+        name: Padding
+        description: Add padding inside a container
+        supported: true
+        priority: critical
+
+      - id: layout.fill
+        name: Fill Parent
+        description: Expand to fill available space
+        supported: true
+        priority: critical
+
+      - id: layout.fixed
+        name: Fixed Size
+        description: Explicit width and height dimensions
+        supported: true
+        priority: critical
+
+      - id: layout.hug
+        name: Hug Content
+        description: Size to fit content
+        supported: true
+        priority: critical
+
+      - id: layout.alignment
+        name: Alignment
+        description: Align children on main and cross axes
+        supported: true
+        priority: critical
+
+      - id: layout.spacer
+        name: Flexible Spacer
+        description: Add flexible space between items
+        supported: true
+        priority: high
+
+      - id: layout.scroll
+        name: Scrollable
+        description: Make container scrollable
+        supported: true
+        priority: high
+
+      - id: layout.clip
+        name: Clip Content
+        description: Clip content that overflows bounds
+        supported: true
+        priority: high
+
+      - id: layout.wrap
+        name: Wrap Layout
+        description: Wrap children to next line when overflowing
+        supported: false
+        priority: medium
+        workaround: Use multiple rows
+
+      - id: layout.grid
+        name: Grid Layout
+        description: CSS-style grid layout system
+        supported: false
+        priority: medium
+        workaround: Combine rows and columns
+
+      - id: layout.responsive
+        name: Responsive Breakpoints
+        description: Different layouts at different viewport sizes
+        supported: false
+        priority: high
+
+  - name: Style
+    description: Visual styling patterns
+    patterns:
+      - id: style.solidFill
+        name: Solid Background
+        description: Solid color background fill
+        supported: true
+        priority: critical
+
+      - id: style.tokenColor
+        name: Token Color
+        description: Reference design token for color
+        supported: true
+        priority: critical
+
+      - id: style.linearGradient
+        name: Linear Gradient
+        description: Linear gradient background
+        supported: false
+        priority: high
+
+      - id: style.radialGradient
+        name: Radial Gradient
+        description: Radial gradient background
+        supported: false
+        priority: low
+
+      - id: style.borderRadius
+        name: Border Radius
+        description: Rounded corners
+        supported: true
+        priority: critical
+
+      - id: style.perCornerRadius
+        name: Per-Corner Radius
+        description: Different radius for each corner
+        supported: true
+        priority: high
+
+      - id: style.border
+        name: Border Stroke
+        description: Border with width and color
+        supported: true
+        priority: high
+
+      - id: style.shadow
+        name: Drop Shadow
+        description: Box shadow effect
+        supported: true
+        priority: high
+
+      - id: style.opacity
+        name: Opacity
+        description: Element transparency
+        supported: true
+        priority: high
+
+      - id: style.blur
+        name: Blur Effect
+        description: Blur or backdrop blur effect
+        supported: false
+        priority: medium
+
+      - id: style.rotate
+        name: Rotation
+        description: Rotate element by degrees
+        supported: false
+        priority: medium
+
+      - id: style.scale
+        name: Scale
+        description: Scale element size
+        supported: false
+        priority: low
+
+      - id: style.translate
+        name: Translate
+        description: Offset element position
+        supported: false
+        priority: low
+        workaround: Use absolute positioning
+
+  - name: Text
+    description: Text content and typography
+    patterns:
+      - id: text.basic
+        name: Basic Text
+        description: Display text content
+        supported: true
+        priority: critical
+
+      - id: text.fontSize
+        name: Font Size
+        description: Set text size
+        supported: true
+        priority: critical
+
+      - id: text.fontWeight
+        name: Font Weight
+        description: Set text weight (bold, etc)
+        supported: true
+        priority: critical
+
+      - id: text.color
+        name: Text Color
+        description: Set text foreground color
+        supported: true
+        priority: critical
+
+      - id: text.align
+        name: Text Alignment
+        description: Left, center, right alignment
+        supported: true
+        priority: high
+
+      - id: text.family
+        name: Font Family
+        description: Custom font family
+        supported: true
+        priority: high
+
+      - id: text.richText
+        name: Rich Text Spans
+        description: Mixed styles within single text
+        supported: false
+        priority: high
+
+      - id: text.lineHeight
+        name: Line Height
+        description: Vertical line spacing
+        supported: false
+        priority: medium
+
+      - id: text.letterSpacing
+        name: Letter Spacing
+        description: Horizontal character spacing
+        supported: false
+        priority: low
+
+      - id: text.decoration
+        name: Text Decoration
+        description: Underline, strikethrough
+        supported: false
+        priority: low
+
+      - id: text.truncation
+        name: Text Truncation
+        description: Ellipsis for overflow text
+        supported: false
+        priority: medium
+
+  - name: Image
+    description: Image display patterns
+    patterns:
+      - id: image.basic
+        name: Basic Image
+        description: Display an image from URL or asset
+        supported: true
+        priority: critical
+
+      - id: image.fit
+        name: Image Fit
+        description: Control image sizing (cover, contain, etc)
+        supported: true
+        priority: high
+
+      - id: image.alt
+        name: Alt Text
+        description: Accessibility alternative text
+        supported: true
+        priority: high
+
+  - name: Icon
+    description: Icon display patterns
+    patterns:
+      - id: icon.basic
+        name: Basic Icon
+        description: Display an icon
+        supported: true
+        priority: critical
+
+      - id: icon.size
+        name: Icon Size
+        description: Custom icon size
+        supported: true
+        priority: high
+
+      - id: icon.color
+        name: Icon Color
+        description: Icon tint color
+        supported: true
+        priority: high
+
+      - id: icon.set
+        name: Icon Set
+        description: Use different icon libraries
+        supported: true
+        priority: medium
+
+  - name: Component
+    description: Component system patterns
+    patterns:
+      - id: component.use
+        name: Component Instance
+        description: Instantiate a component
+        supported: true
+        priority: critical
+
+      - id: component.slot
+        name: Slot Content
+        description: Define slot placeholder in component
+        supported: true
+        priority: critical
+
+      - id: component.params
+        name: Component Parameters
+        description: Override component parameters
+        supported: false
+        priority: critical
+
+  - name: Token
+    description: Design token patterns
+    patterns:
+      - id: token.color
+        name: Color Token
+        description: Reference color from design tokens
+        supported: true
+        priority: critical
+
+      - id: token.spacing
+        name: Spacing Token
+        description: Reference spacing from design tokens
+        supported: true
+        priority: high
+
+      - id: token.radius
+        name: Radius Token
+        description: Reference radius from design tokens
+        supported: true
+        priority: high
+
+      - id: token.typography
+        name: Typography Token
+        description: Reference full typography style
+        supported: false
+        priority: medium
+
+# Summary statistics
+summary:
+  totalPatterns: 52
+  supportedCount: 36
+  unsupportedCount: 16
+  coveragePercent: 69.2
+
+  byPriority:
+    critical:
+      total: 20
+      supported: 19
+      coverage: 95.0
+    high:
+      total: 16
+      supported: 10
+      coverage: 62.5
+    medium:
+      total: 11
+      supported: 3
+      coverage: 27.3
+    low:
+      total: 5
+      supported: 4
+      coverage: 80.0
