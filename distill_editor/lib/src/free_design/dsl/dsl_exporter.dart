@@ -287,7 +287,8 @@ class DslExporter {
         TokenFill(tokenRef: final t) => '{$t}',
         GradientFill(gradientType: GradientType.linear) =>
           _exportLinearGradient(fill as GradientFill),
-        GradientFill() => null, // Radial gradients not supported in DSL v1
+        GradientFill(gradientType: GradientType.radial) =>
+          _exportRadialGradient(fill as GradientFill),
       };
       if (bgValue != null) {
         props.add('bg $bgValue');
@@ -435,6 +436,24 @@ class DslExporter {
     if (gradient.angle != 180) {
       buffer.write('${_formatNumber(gradient.angle)},');
     }
+
+    // Export color stops (positions are evenly distributed, so we only need colors)
+    final colors = gradient.stops.map((stop) {
+      return switch (stop.color) {
+        HexColor(hex: final h) => h,
+        TokenColor(tokenRef: final t) => '{$t}',
+      };
+    }).join(',');
+    buffer.write(colors);
+    buffer.write(')');
+
+    return buffer.toString();
+  }
+
+  /// Export radial gradient to DSL format.
+  /// radial(#color1,#color2,...)
+  String _exportRadialGradient(GradientFill gradient) {
+    final buffer = StringBuffer('radial(');
 
     // Export color stops (positions are evenly distributed, so we only need colors)
     final colors = gradient.stops.map((stop) {

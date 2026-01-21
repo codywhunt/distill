@@ -231,6 +231,54 @@ frame Test
   container#root - visible false
 ''');
     });
+
+    test('linear gradient with angle', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - bg linear(90,#FF0000,#0000FF)
+''');
+    });
+
+    test('linear gradient with default angle', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - bg linear(#FF0000,#00FF00,#0000FF)
+''');
+    });
+
+    test('linear gradient with token colors', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - bg linear(45,{color.primary},{color.secondary})
+''');
+    });
+
+    test('radial gradient', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - bg radial(#FF0000,#0000FF)
+''');
+    });
+
+    test('radial gradient with multiple stops', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - bg radial(#FF0000,#00FF00,#0000FF)
+''');
+    });
+
+    test('radial gradient with token colors', () {
+      verifyRoundTrip('''
+dsl:1
+frame Test
+  container#root - bg radial({color.primary},{color.secondary})
+''');
+    });
   });
 
   group('Node Type Round-Trips', () {
@@ -485,6 +533,22 @@ void _compareStyles(NodeStyle a, NodeStyle b, String nodeId) {
       }
     } else if (a.fill is TokenFill) {
       expect((b.fill as TokenFill).tokenRef, equals((a.fill as TokenFill).tokenRef));
+    } else if (a.fill is GradientFill) {
+      final fillA = a.fill as GradientFill;
+      final fillB = b.fill as GradientFill;
+      expect(fillB.gradientType, equals(fillA.gradientType),
+          reason: 'Gradient type mismatch for $nodeId');
+      expect(fillB.stops.length, equals(fillA.stops.length),
+          reason: 'Gradient stop count mismatch for $nodeId');
+      for (var i = 0; i < fillA.stops.length; i++) {
+        expect(fillB.stops[i].position, equals(fillA.stops[i].position),
+            reason: 'Gradient stop $i position mismatch for $nodeId');
+        _compareColors(fillA.stops[i].color, fillB.stops[i].color, '$nodeId.gradient.stop[$i]');
+      }
+      if (fillA.gradientType == GradientType.linear) {
+        expect(fillB.angle, equals(fillA.angle),
+            reason: 'Gradient angle mismatch for $nodeId');
+      }
     }
   }
 
@@ -575,4 +639,13 @@ void _comparePadding(TokenEdgePadding a, TokenEdgePadding b, String nodeId) {
   _compareNumericValues(a.right, b.right, '$nodeId.padding.right');
   _compareNumericValues(a.bottom, b.bottom, '$nodeId.padding.bottom');
   _compareNumericValues(a.left, b.left, '$nodeId.padding.left');
+}
+
+void _compareColors(ColorValue a, ColorValue b, String context) {
+  expect(b.runtimeType, equals(a.runtimeType), reason: '$context color type mismatch');
+  if (a is HexColor) {
+    expect((b as HexColor).hex, equals(a.hex), reason: '$context hex mismatch');
+  } else if (a is TokenColor) {
+    expect((b as TokenColor).tokenRef, equals(a.tokenRef), reason: '$context token mismatch');
+  }
 }

@@ -158,8 +158,8 @@ class ExpressivenessScorer {
       name: 'Radial Gradient',
       category: 'Style',
       description: 'Radial gradient background',
-      supported: false,
-      priority: PatternPriority.low,
+      supported: true,
+      dslExample: 'container - bg radial(#FF0000,#0000FF)',
     ),
 
     // Style Patterns - Effects

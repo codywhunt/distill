@@ -420,6 +420,9 @@ class DslParser {
       if (bgValue.startsWith('linear(')) {
         // Linear gradient: linear(90,#FF0000,#0000FF) or linear(#FF0000,#0000FF)
         fill = _parseLinearGradient(bgValue);
+      } else if (bgValue.startsWith('radial(')) {
+        // Radial gradient: radial(#FF0000,#0000FF)
+        fill = _parseRadialGradient(bgValue);
       } else {
         final tokenPath = _extractTokenPath(bgValue);
         if (tokenPath != null) {
@@ -632,6 +635,43 @@ class DslParser {
       gradientType: GradientType.linear,
       stops: stops,
       angle: angle,
+    );
+  }
+
+  /// Parse radial gradient: radial(#FF0000,#0000FF)
+  GradientFill? _parseRadialGradient(String value) {
+    // Extract content inside radial(...)
+    if (!value.startsWith('radial(') || !value.endsWith(')')) {
+      return null;
+    }
+    final content = value.substring(7, value.length - 1); // Remove "radial(" and ")"
+    final parts = content.split(',').map((s) => s.trim()).toList();
+
+    if (parts.length < 2) return null; // Need at least 2 colors
+
+    // Parse color stops
+    final stops = <GradientStop>[];
+    for (var i = 0; i < parts.length; i++) {
+      final colorStr = parts[i];
+      // Distribute positions evenly by default
+      final position = i / (parts.length - 1);
+      if (colorStr.startsWith('#')) {
+        stops.add(GradientStop(position: position, color: HexColor(colorStr)));
+      } else {
+        // Token color reference
+        final tokenPath = _extractTokenPath(colorStr);
+        if (tokenPath != null) {
+          stops.add(GradientStop(position: position, color: TokenColor(tokenPath)));
+        }
+      }
+    }
+
+    if (stops.length < 2) return null;
+
+    return GradientFill(
+      gradientType: GradientType.radial,
+      stops: stops,
+      angle: 0, // Not used for radial gradients
     );
   }
 
