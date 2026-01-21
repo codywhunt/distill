@@ -67,6 +67,9 @@ class DslGrammar {
     'color': 'color',
     'textAlign': 'textAlign',
     'family': 'fontFamily',
+    'lh': 'lineHeight', // lh 1.5
+    'ls': 'letterSpacing', // ls 0.5
+    'decor': 'decoration', // decor underline | decor lineThrough
   };
 
   /// Icon-specific properties.

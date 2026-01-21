@@ -333,6 +333,9 @@ class DslParser {
           color: _parseColorString(props['color'] ?? props['fg']),
           textAlign: _parseTextAlign(props['textAlign']),
           fontFamily: props['family'],
+          lineHeight: double.tryParse(props['lh'] ?? ''),
+          letterSpacing: double.tryParse(props['ls'] ?? ''),
+          decoration: _parseTextDecoration(props['decor']),
         ),
       NodeType.image => ImageProps(
           src: content ?? props['src'] ?? '',
@@ -565,6 +568,14 @@ class DslParser {
     return ImageFit.values.firstWhere(
       (e) => e.name == value,
       orElse: () => ImageFit.cover,
+    );
+  }
+
+  TextDecoration _parseTextDecoration(String? value) {
+    if (value == null) return TextDecoration.none;
+    return TextDecoration.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => TextDecoration.none,
     );
   }
 

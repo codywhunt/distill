@@ -338,6 +338,9 @@ class DslExporter {
           color: final color,
           textAlign: final align,
           fontFamily: final family,
+          lineHeight: final lh,
+          letterSpacing: final ls,
+          decoration: final decor,
         ):
         if (size != 14) {
           props.add('size ${_formatNumber(size)}');
@@ -353,6 +356,15 @@ class DslExporter {
         }
         if (family != null) {
           props.add('family "$family"');
+        }
+        if (lh != null) {
+          props.add('lh ${_formatNumber(lh)}');
+        }
+        if (ls != null) {
+          props.add('ls ${_formatNumber(ls)}');
+        }
+        if (decor != TextDecoration.none) {
+          props.add('decor ${decor.name}');
         }
 
       case IconProps(

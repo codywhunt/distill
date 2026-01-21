@@ -1,10 +1,10 @@
 {
   "status": "idle",
-  "iteration": 1,
+  "iteration": 3,
   "currentHypothesis": null,
   "baseline": {
     "tokenEfficiency": 0.25,
-    "patternCoverage": 0.69,
+    "patternCoverage": 0.78,
     "roundTripFidelity": 1.0,
     "testsPassing": 883
   },
@@ -20,6 +20,19 @@
         "Tests must be updated when implementation architecture changes",
         "Always trace test failures back to implementation changes"
       ]
+    },
+    {
+      "id": "iter_2",
+      "hypothesis": "Add DSL support for lineHeight, letterSpacing, and text decoration",
+      "outcome": "improved",
+      "details": "Added lh, ls, and decor properties to DSL grammar, parser, and exporter. Pattern coverage improved from 0.69 to 0.78 (+9%).",
+      "deltaPatterns": 3,
+      "commit": "pending",
+      "timestamp": "2026-01-21T03:30:00Z",
+      "learnings": [
+        "IR model already supported properties that DSL did not expose - check for these gaps",
+        "Shorthand property names (lh, ls, decor) follow existing conventions"
+      ]
     }
   ],
   "learnings": [
@@ -27,6 +40,7 @@
     "New DSL constructs need tests before implementation",
     "Token efficiency improvements should not sacrifice readability",
     "Always verify round-trip fidelity before committing",
-    "Tests must be updated when implementation architecture changes"
+    "Tests must be updated when implementation architecture changes",
+    "IR model may support properties that DSL does not yet expose - check for these gaps"
   ]
 }
