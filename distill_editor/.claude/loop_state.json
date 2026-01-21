@@ -1,12 +1,12 @@
 {
   "status": "idle",
-  "iteration": 4,
+  "iteration": 7,
   "currentHypothesis": null,
   "baseline": {
     "tokenEfficiency": 0.25,
-    "patternCoverage": 0.80,
+    "patternCoverage": 0.82,
     "roundTripFidelity": 1.0,
-    "testsPassing": 883
+    "testsPassing": 857
   },
   "history": [
     {
@@ -40,11 +40,51 @@
       "outcome": "improved",
       "details": "Added linear gradient parsing/export with syntax: bg linear(angle,#color1,#color2). Pattern coverage improved from 0.78 to 0.80 (+2%).",
       "deltaPatterns": 1,
-      "commit": "pending",
+      "commit": "f8af9e3",
       "timestamp": "2026-01-21T03:45:00Z",
       "learnings": [
         "GradientFill was already in IR but not exposed in DSL",
         "Compact syntax linear(90,#F00,#00F) is efficient for AI generation"
+      ]
+    },
+    {
+      "id": "iter_4",
+      "hypothesis": "Add DSL support for radial gradients",
+      "outcome": "improved",
+      "details": "Added radial gradient parsing/export with syntax: bg radial(#color1,#color2). Pattern coverage improved from 0.80 to 0.82 (+2%). Added 6 new gradient round-trip tests.",
+      "deltaPatterns": 1,
+      "commit": "0533f22",
+      "timestamp": "2026-01-21T04:00:00Z",
+      "learnings": [
+        "Grammar already listed radial in gradientTypes but wasn't implemented",
+        "Radial gradients don't need angle parameter, keeping syntax simpler"
+      ]
+    },
+    {
+      "id": "iter_5",
+      "hypothesis": "Implement shadow support (was incorrectly marked as supported)",
+      "outcome": "improved",
+      "details": "Fixed correctness issue: shadow was listed as supported in grammar/expressiveness but not implemented. Added shadow parsing/export with syntax: shadow 0,4,8,0 #color. Added 3 new shadow tests.",
+      "deltaTests": 3,
+      "commit": "d9a9237",
+      "timestamp": "2026-01-21T04:15:00Z",
+      "learnings": [
+        "Always verify that features marked as supported actually work - expressiveness scorer may have false positives",
+        "Test round-trip fidelity for all advertised features"
+      ]
+    },
+    {
+      "id": "iter_6",
+      "hypothesis": "Add 3-char hex color support for token efficiency",
+      "outcome": "improved",
+      "details": "Parser now accepts 3-char (#RGB) and 4-char (#RGBA) hex colors, normalizing to 6/8 char. Exporter compresses to short form when possible (#FFFFFF -> #FFF). Saves ~3 tokens per compressible color.",
+      "deltaTokens": -3,
+      "commit": "33be6fb",
+      "timestamp": "2026-01-21T04:30:00Z",
+      "learnings": [
+        "Token savings compound - common colors like #FFFFFF, #000000 appear frequently",
+        "Normalizing in parser and compressing in exporter maintains round-trip fidelity",
+        "4-char hex (#RGBA) provides same benefit for colors with alpha"
       ]
     }
   ],
@@ -55,6 +95,11 @@
     "Always verify round-trip fidelity before committing",
     "Tests must be updated when implementation architecture changes",
     "IR model may support properties that DSL does not yet expose - check for these gaps",
-    "Compact function-style syntax works well for complex values like gradients"
-  ]
+    "Compact function-style syntax works well for complex values like gradients",
+    "Check grammar.dart for features listed but not yet implemented",
+    "Verify features marked as supported actually work - expressiveness scorer may have false positives",
+    "Short hex colors (#FFF) save tokens while maintaining clarity"
+  ],
+  "currentFocus": "tokenEfficiency",
+  "focusRationale": "Expressiveness at 82% is acceptable. Token efficiency still needs improvement. Remaining priorities: center shorthand, fill shorthand, weight keywords, omit defaults."
 }

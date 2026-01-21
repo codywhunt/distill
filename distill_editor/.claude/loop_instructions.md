@@ -157,17 +157,46 @@ These must always be preserved:
 - [ ] Token resolution paths work correctly
 - [ ] All existing tests pass
 
-## Improvement Categories
+## Current Focus: Token Efficiency
 
-### Token Efficiency
-- Reduce characters/tokens needed for common patterns
-- Add better defaults to omit properties
-- Support shorthand syntax
+**Priority: HIGH** - Expressiveness is at 82% (acceptable). Token efficiency needs 2x improvement.
 
-### Expressiveness
-- Add new node types or properties
-- Support more UI patterns
-- Enable better composition
+### Current Metrics (as of iteration 6)
+- Token Ratio: 0.250 (target: <0.25) - close
+- Avg Tokens/Node: 16.27 (target: <8.0) - needs 2x improvement
+- Tokens/Line: 11.93 (target: <6.0) - needs 2x improvement
+
+### Token Efficiency Targets (in priority order)
+
+| Priority | Optimization | Tokens Saved | Files to Modify |
+|----------|--------------|--------------|-----------------|
+| 1 | 3-char hex colors (`#FFF` for `#FFFFFF`) | ~3 per color | parser, exporter |
+| 2 | `center` shorthand for `align center,center` | 2 per use | parser, exporter |
+| 3 | `fill` shorthand for `w fill h fill` | 2 per use | parser, exporter |
+| 4 | Weight keywords (`bold`=700, `semibold`=600) | 1 per use | parser, exporter |
+| 5 | Omit default `size 16` for text | 2 per text node | exporter |
+| 6 | Implicit `#root` for single-child frames | 1 per frame | parser, exporter |
+| 7 | Omit default colors (black text, white bg) | 2 per node | exporter |
+
+### Implementation Pattern for Token Efficiency
+
+1. **Parser changes**: Accept new shorthand syntax
+2. **Exporter changes**: Emit shortest valid representation
+3. **Tests**: Verify round-trip with both long and short forms
+4. **Backward compatibility**: Long form must still parse
+
+Example for 3-char hex:
+```dart
+// Parser: accept #RGB or #RRGGBB
+// Exporter: emit #RGB when possible (R==RR, G==GG, B==BB)
+// #FFFFFF → #FFF, #FF5500 → #F50, #123456 → #123456 (no shorthand)
+```
+
+## Other Improvement Categories (Lower Priority)
+
+### Expressiveness (82% coverage - acceptable for now)
+- Remaining gaps: Component Parameters, Responsive Breakpoints, Rich Text Spans
+- Only pursue if token efficiency targets are met
 
 ### Correctness
 - Fix edge cases in parsing/export
