@@ -46,7 +46,7 @@
 | 95th percentile frame time documented | Value recorded in `doc/performance.md` | ✅ (see baseline metrics) |
 | Momentum tests passing | `flutter test test/momentum_test.dart` green | ✅ 20 tests |
 | Gesture tests passing | `flutter test test/gesture_handling_test.dart` green | ✅ 17 tests |
-| Test coverage (controller) ≥60% | `flutter test --coverage` report | ⚠️ Pending measurement |
+| Test coverage (controller) ≥60% | `flutter test --coverage` report | ✅ 82.1% (288/351) |
 | Documentation reviewed | PR approval from team lead | ⏳ Pending |
 
 ---

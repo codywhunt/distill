@@ -83,10 +83,7 @@ class DslExporter {
   }
 
   /// Export entire document (all frames).
-  String exportDocument(
-    EditorDocument doc, {
-    bool includeIds = true,
-  }) {
+  String exportDocument(EditorDocument doc, {bool includeIds = true}) {
     return exportFrames(doc, doc.frames.keys.toList(), includeIds: includeIds);
   }
 
@@ -286,13 +283,11 @@ class DslExporter {
         SolidFill(color: TokenColor(tokenRef: final t)) => '{$t}',
         TokenFill(tokenRef: final t) => '{$t}',
         GradientFill(gradientType: GradientType.linear) =>
-          _exportLinearGradient(fill as GradientFill),
+          _exportLinearGradient(fill),
         GradientFill(gradientType: GradientType.radial) =>
-          _exportRadialGradient(fill as GradientFill),
+          _exportRadialGradient(fill),
       };
-      if (bgValue != null) {
-        props.add('bg $bgValue');
-      }
+      props.add('bg $bgValue');
     }
 
     // Corner radius - now uses NumericValue
@@ -307,8 +302,10 @@ class DslExporter {
         }
       } else {
         // Per-corner radius
-        props.add('r ${_exportNumericValue(r.topLeft)},${_exportNumericValue(r.topRight)},'
-            '${_exportNumericValue(r.bottomRight)},${_exportNumericValue(r.bottomLeft)}');
+        props.add(
+          'r ${_exportNumericValue(r.topLeft)},${_exportNumericValue(r.topRight)},'
+          '${_exportNumericValue(r.bottomRight)},${_exportNumericValue(r.bottomLeft)}',
+        );
       }
     }
 
@@ -329,8 +326,10 @@ class DslExporter {
         HexColor(hex: final h) => _compressHex(h),
         TokenColor(tokenRef: final t) => '{$t}',
       };
-      props.add('shadow ${_formatNumber(shadow.offsetX)},${_formatNumber(shadow.offsetY)},'
-          '${_formatNumber(shadow.blur)},${_formatNumber(shadow.spread)} $colorStr');
+      props.add(
+        'shadow ${_formatNumber(shadow.offsetX)},${_formatNumber(shadow.offsetY)},'
+        '${_formatNumber(shadow.blur)},${_formatNumber(shadow.spread)} $colorStr',
+      );
     }
 
     // Opacity
@@ -347,15 +346,15 @@ class DslExporter {
   void _addTypeProps(List<String> props, Node node) {
     switch (node.props) {
       case TextProps(
-          fontSize: final size,
-          fontWeight: final weight,
-          color: final color,
-          textAlign: final align,
-          fontFamily: final family,
-          lineHeight: final lh,
-          letterSpacing: final ls,
-          decoration: final decor,
-        ):
+        fontSize: final size,
+        fontWeight: final weight,
+        color: final color,
+        textAlign: final align,
+        fontFamily: final family,
+        lineHeight: final lh,
+        letterSpacing: final ls,
+        decoration: final decor,
+      ):
         if (size != 14) {
           props.add('size ${_formatNumber(size)}');
         }
@@ -381,11 +380,7 @@ class DslExporter {
           props.add('decor ${decor.name}');
         }
 
-      case IconProps(
-          iconSet: final set,
-          size: final size,
-          color: final color,
-        ):
+      case IconProps(iconSet: final set, size: final size, color: final color):
         if (set != 'material') {
           props.add('iconSet $set');
         }
@@ -405,9 +400,9 @@ class DslExporter {
         }
 
       case ContainerProps(
-          clipContent: final clip,
-          scrollDirection: final scroll,
-        ):
+        clipContent: final clip,
+        scrollDirection: final scroll,
+      ):
         if (clip) {
           props.add('clip');
         }
@@ -489,12 +484,14 @@ class DslExporter {
     }
 
     // Export color stops (positions are evenly distributed, so we only need colors)
-    final colors = gradient.stops.map((stop) {
-      return switch (stop.color) {
-        HexColor(hex: final h) => _compressHex(h),
-        TokenColor(tokenRef: final t) => '{$t}',
-      };
-    }).join(',');
+    final colors = gradient.stops
+        .map((stop) {
+          return switch (stop.color) {
+            HexColor(hex: final h) => _compressHex(h),
+            TokenColor(tokenRef: final t) => '{$t}',
+          };
+        })
+        .join(',');
     buffer.write(colors);
     buffer.write(')');
 
@@ -507,12 +504,14 @@ class DslExporter {
     final buffer = StringBuffer('radial(');
 
     // Export color stops (positions are evenly distributed, so we only need colors)
-    final colors = gradient.stops.map((stop) {
-      return switch (stop.color) {
-        HexColor(hex: final h) => _compressHex(h),
-        TokenColor(tokenRef: final t) => '{$t}',
-      };
-    }).join(',');
+    final colors = gradient.stops
+        .map((stop) {
+          return switch (stop.color) {
+            HexColor(hex: final h) => _compressHex(h),
+            TokenColor(tokenRef: final t) => '{$t}',
+          };
+        })
+        .join(',');
     buffer.write(colors);
     buffer.write(')');
 
@@ -552,7 +551,6 @@ class DslExporter {
     return '${_exportNumericValue(pad.top)},${_exportNumericValue(pad.right)},'
         '${_exportNumericValue(pad.bottom)},${_exportNumericValue(pad.left)}';
   }
-
 }
 
 /// Exception thrown when DSL export fails.
