@@ -94,6 +94,12 @@ class CanvasGestureHandler {
   VelocityTracker? _velocityTracker;
   PointerDeviceKind? _dragPointerKind;
 
+  // Potential drag state (before threshold exceeded)
+  // This allows tap gestures to complete without interference
+  Offset? _potentialDragStart;
+  PointerDeviceKind? _potentialDragKind;
+  Duration? _potentialDragTimestamp;
+
   // Trackpad pan/zoom state
   double _trackpadLastScale = 1.0;
   bool _isTrackpadZooming = false;
@@ -257,14 +263,13 @@ class CanvasGestureHandler {
       return;
     }
 
-    // Otherwise, this might be a drag gesture
+    // Store potential drag start (actual drag tracking begins on movement)
+    // This allows tap gestures to complete without interference from early
+    // drag state initialization.
     if (_hasDragCallbacks) {
-      _dragStartView = event.localPosition;
-      _lastDragView = event.localPosition;
-      _dragPointerKind = event.kind;
-      // Initialize velocity tracker for drag end
-      _velocityTracker = VelocityTracker.withKind(event.kind);
-      _velocityTracker!.addPosition(event.timeStamp, event.localPosition);
+      _potentialDragStart = event.localPosition;
+      _potentialDragKind = event.kind;
+      _potentialDragTimestamp = event.timeStamp;
     }
   }
 
@@ -279,25 +284,31 @@ class CanvasGestureHandler {
       return;
     }
 
-    // Handle drag
-    if (_dragStartView != null && _hasDragCallbacks) {
-      // Track velocity
-      _velocityTracker?.addPosition(event.timeStamp, event.localPosition);
-
+    // Handle drag (lazily initialized when threshold exceeded)
+    if (_potentialDragStart != null && _hasDragCallbacks) {
       if (!_isDragging) {
-        // Check threshold
-        final threshold = _gestureConfig.getDragThreshold(_dragPointerKind);
-        final distance = (event.localPosition - _dragStartView!).distance;
+        // Check threshold before starting drag
+        final threshold = _gestureConfig.getDragThreshold(_potentialDragKind);
+        final distance = (event.localPosition - _potentialDragStart!).distance;
         if (distance > threshold) {
+          // NOW initialize full drag tracking
           _isDragging = true;
+          _dragStartView = _potentialDragStart;
+          _lastDragView = _potentialDragStart;
+          _dragPointerKind = _potentialDragKind;
+          _velocityTracker = VelocityTracker.withKind(_potentialDragKind!);
+          if (_potentialDragTimestamp != null) {
+            _velocityTracker!
+                .addPosition(_potentialDragTimestamp!, _potentialDragStart!);
+          }
           _delegate.setState(() {});
 
           // Fire drag start
           if (_delegate.onDragStartWorld != null) {
             _delegate.onDragStartWorld!(
               CanvasDragStartDetails(
-                worldPosition: _controller.viewToWorld(_dragStartView!),
-                viewPosition: _dragStartView!,
+                worldPosition: _controller.viewToWorld(_potentialDragStart!),
+                viewPosition: _potentialDragStart!,
                 kind: event.kind,
               ),
             );
@@ -305,20 +316,25 @@ class CanvasGestureHandler {
         }
       }
 
-      if (_isDragging && _delegate.onDragUpdateWorld != null) {
-        final viewDelta = event.localPosition - _lastDragView!;
-        final worldDelta = viewDelta / _controller.zoom;
+      if (_isDragging) {
+        // Track velocity
+        _velocityTracker?.addPosition(event.timeStamp, event.localPosition);
 
-        _delegate.onDragUpdateWorld!(
-          CanvasDragUpdateDetails(
-            worldPosition: _controller.viewToWorld(event.localPosition),
-            worldDelta: worldDelta,
-            viewPosition: event.localPosition,
-            viewDelta: viewDelta,
-          ),
-        );
+        if (_delegate.onDragUpdateWorld != null) {
+          final viewDelta = event.localPosition - _lastDragView!;
+          final worldDelta = viewDelta / _controller.zoom;
 
-        _lastDragView = event.localPosition;
+          _delegate.onDragUpdateWorld!(
+            CanvasDragUpdateDetails(
+              worldPosition: _controller.viewToWorld(event.localPosition),
+              worldDelta: worldDelta,
+              viewPosition: event.localPosition,
+              viewDelta: viewDelta,
+            ),
+          );
+
+          _lastDragView = event.localPosition;
+        }
       }
     }
   }
@@ -374,6 +390,11 @@ class CanvasGestureHandler {
     _lastDragView = null;
     _velocityTracker = null;
     _dragPointerKind = null;
+
+    // Clear potential drag state (allows tap gestures to complete)
+    _potentialDragStart = null;
+    _potentialDragKind = null;
+    _potentialDragTimestamp = null;
   }
 
   //─────────────────────────────────────────────────────────────────────────────

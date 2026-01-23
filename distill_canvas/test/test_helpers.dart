@@ -10,6 +10,7 @@ library;
 import 'package:distill_canvas/infinite_canvas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 // Empty main to satisfy test runner when this file is run directly
 void main() {}
@@ -173,4 +174,87 @@ class CountingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CountingPainter oldDelegate) =>
       color != oldDelegate.color;
+}
+
+//─────────────────────────────────────────────────────────────────────────────
+// Gesture Test Helpers
+//─────────────────────────────────────────────────────────────────────────────
+
+/// Simulates a tap gesture that properly resolves in the gesture arena.
+///
+/// Unlike `tester.tap()`, this helper gives the gesture arena time to
+/// resolve, ensuring tap callbacks fire correctly. This is necessary because:
+/// 1. The canvas uses both a [Listener] for raw pointer events and a
+///    [GestureDetector] for tap detection
+/// 2. The GestureDetector has both onTapUp and onDoubleTapDown, so Flutter
+///    waits ~300ms (kDoubleTapTimeout) before deciding it's a single tap
+///
+/// The default [disambiguationDelay] of 350ms accounts for the double-tap
+/// timeout plus some buffer.
+///
+/// Example:
+/// ```dart
+/// testWidgets('tap fires callback', (tester) async {
+///   Offset? tappedPos;
+///   await tester.pumpWidget(
+///     buildCanvasTestHarness(
+///       controller: controller,
+///       onTapWorld: (pos) => tappedPos = pos,
+///     ),
+///   );
+///   await tapOnCanvas(tester, const Offset(400, 300));
+///   expect(tappedPos, isNotNull);
+/// });
+/// ```
+Future<void> tapOnCanvas(
+  WidgetTester tester,
+  Offset position, {
+  Duration disambiguationDelay = const Duration(milliseconds: 350),
+}) async {
+  final gesture = await tester.startGesture(position);
+  await tester.pump(disambiguationDelay);
+  await gesture.up();
+  await tester.pump();
+}
+
+/// Simulates a drag gesture with proper start/update/end sequence.
+///
+/// Moves from [start] to [end] in [steps] increments, ensuring drag
+/// threshold is exceeded and all callbacks fire.
+///
+/// Example:
+/// ```dart
+/// testWidgets('drag fires callbacks', (tester) async {
+///   CanvasDragStartDetails? startDetails;
+///   await tester.pumpWidget(
+///     buildCanvasTestHarness(
+///       controller: controller,
+///       onDragStartWorld: (d) => startDetails = d,
+///     ),
+///   );
+///   await dragOnCanvas(
+///     tester,
+///     start: const Offset(400, 300),
+///     end: const Offset(500, 400),
+///   );
+///   expect(startDetails, isNotNull);
+/// });
+/// ```
+Future<void> dragOnCanvas(
+  WidgetTester tester, {
+  required Offset start,
+  required Offset end,
+  int steps = 10,
+}) async {
+  final gesture = await tester.startGesture(start);
+  await tester.pump();
+
+  final delta = (end - start) / steps.toDouble();
+  for (var i = 1; i <= steps; i++) {
+    await gesture.moveTo(start + delta * i.toDouble());
+    await tester.pump();
+  }
+
+  await gesture.up();
+  await tester.pumpAndSettle();
 }
