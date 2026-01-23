@@ -66,6 +66,50 @@ class CanvasLayers {
   ///
   /// This is where your nodes, shapes, and interactive elements go.
   /// Use [CanvasItem] to position widgets at world coordinates.
+  ///
+  /// ## Performance Requirements
+  ///
+  /// **This callback is invoked on EVERY viewport change** (60+ fps during
+  /// gestures). Implementations MUST be efficient:
+  ///
+  /// ### DO:
+  /// - Use [controller.getVisibleWorldBounds] to cull off-screen items
+  /// - Memoize expensive computations outside the builder
+  /// - Use [ValueKey] on items for widget identity preservation
+  /// - Check motion state for LOD rendering ([controller.isInMotionListenable])
+  ///
+  /// ### DON'T:
+  /// - Rebuild entire item list on each call without culling
+  /// - Perform O(n) operations on large collections every frame
+  /// - Create new objects/closures unconditionally inside the builder
+  ///
+  /// ### Example (efficient implementation):
+  /// ```dart
+  /// content: (context, controller) {
+  ///   final visible = controller.getVisibleWorldBounds(
+  ///     MediaQuery.sizeOf(context),
+  ///   );
+  ///
+  ///   // Cull items to visible bounds
+  ///   final visibleItems = allItems.where(
+  ///     (item) => visible.overlaps(item.bounds),
+  ///   );
+  ///
+  ///   return Stack(
+  ///     children: [
+  ///       for (final item in visibleItems)
+  ///         CanvasItem(
+  ///           key: ValueKey(item.id),  // Preserve widget identity
+  ///           position: item.position,
+  ///           child: ItemWidget(item: item),
+  ///         ),
+  ///     ],
+  ///   );
+  /// }
+  /// ```
+  ///
+  /// See the [Performance Guide](doc/performance.md) for detailed optimization
+  /// patterns including LOD rendering, spatial indexing, and benchmarking.
   final CanvasLayerBuilder content;
 
   /// Overlay layer rendered in screen-space (NOT transformed).

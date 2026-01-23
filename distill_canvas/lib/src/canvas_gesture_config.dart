@@ -18,6 +18,33 @@ import 'dart:ui';
 ///   onDragUpdateWorld: (details) => moveNodes(details.worldDelta),
 /// )
 /// ```
+///
+/// ## Tap vs Double-Tap Latency
+///
+/// When both `onTapWorld` and `onDoubleTapWorld` are configured on the canvas,
+/// there is an inherent **~300ms delay** before `onTapWorld` fires. This is
+/// because Flutter's gesture system must wait to determine if a second tap
+/// will follow.
+///
+/// ### Workarounds:
+///
+/// 1. **Use only onTapWorld**: If double-tap isn't needed, omit `onDoubleTapWorld`.
+///    Taps will fire immediately.
+///
+/// 2. **Use raw pointer events**: Wrap canvas in [Listener] and handle
+///    `onPointerDown` directly. Implement your own double-tap detection:
+///    ```dart
+///    Listener(
+///      onPointerDown: (event) {
+///        // Immediate response - implement custom double-tap timing
+///      },
+///      child: InfiniteCanvas(...),
+///    )
+///    ```
+///
+/// 3. **Accept the latency**: For many use cases, 300ms is acceptable.
+///
+/// See the [Gesture Guide](doc/gestures.md) for detailed workaround examples.
 class CanvasGestureConfig {
   const CanvasGestureConfig({
     this.enablePan = true,
