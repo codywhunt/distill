@@ -302,6 +302,50 @@ void main() {
       controller.setIsZooming(false);
       expect(values, [true, false]);
     });
+
+    test('isInMotionValue updates when any motion state changes', () {
+      final controller = createAttachedController();
+      addTearDown(controller.dispose);
+
+      final values = <bool>[];
+      controller.isInMotionValue.addListener(() {
+        values.add(controller.isInMotionValue.value);
+      });
+
+      // Initially false
+      expect(controller.isInMotionValue.value, isFalse);
+
+      // Panning sets it true
+      controller.setIsPanning(true);
+      expect(values, [true]);
+      expect(controller.isInMotion, isTrue);
+
+      // Still true with zooming added
+      controller.setIsZooming(true);
+      expect(values, [true]); // No change notification (already true)
+
+      // Still true after panning stops (zooming still active)
+      controller.setIsPanning(false);
+      expect(values, [true]); // Still no change
+
+      // False after all motion stops
+      controller.setIsZooming(false);
+      expect(values, [true, false]);
+      expect(controller.isInMotion, isFalse);
+    });
+
+    test('isInMotion getter returns correct value', () {
+      final controller = createAttachedController();
+      addTearDown(controller.dispose);
+
+      expect(controller.isInMotion, isFalse);
+
+      controller.setIsPanning(true);
+      expect(controller.isInMotion, isTrue);
+
+      controller.setIsPanning(false);
+      expect(controller.isInMotion, isFalse);
+    });
   });
 
   group('Gesture config options', () {

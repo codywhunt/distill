@@ -3,8 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 
+import '_internal/momentum_simulator.dart';
 import '_internal/viewport.dart';
 import 'canvas_momentum_config.dart';
 import 'canvas_physics_config.dart';
@@ -64,6 +64,22 @@ class InfiniteCanvasController extends ChangeNotifier {
   }) : _viewport = CanvasViewport(zoom: initialZoom, pan: initialPan) {
     // Listen for zoom gesture end to update zoom level
     _isZoomingNotifier.addListener(_onZoomingChanged);
+
+    // Sync isInMotion notifier when any motion state changes
+    _isPanningNotifier.addListener(_updateIsInMotion);
+    _isZoomingNotifier.addListener(_updateIsInMotion);
+    _isAnimatingNotifier.addListener(_updateIsInMotion);
+    _isDeceleratingNotifier.addListener(_updateIsInMotion);
+  }
+
+  void _updateIsInMotion() {
+    final inMotion = _isPanningNotifier.value ||
+        _isZoomingNotifier.value ||
+        _isAnimatingNotifier.value ||
+        _isDeceleratingNotifier.value;
+    if (_isInMotionNotifier.value != inMotion) {
+      _isInMotionNotifier.value = inMotion;
+    }
   }
 
   final CanvasViewport _viewport;
@@ -78,7 +94,7 @@ class InfiniteCanvasController extends ChangeNotifier {
 
   // Momentum state
   CanvasMomentumConfig _momentumConfig = CanvasMomentumConfig.defaults;
-  AnimationController? _momentumController;
+  MomentumSimulator? _momentumSimulator;
 
   // Attachment state
   bool _isAttached = false;
@@ -91,6 +107,7 @@ class InfiniteCanvasController extends ChangeNotifier {
   final ValueNotifier<bool> _isZoomingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isAnimatingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isDeceleratingNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> _isInMotionNotifier = ValueNotifier(false);
 
   /// Whether the viewport is currently being panned by user gesture.
   ///
@@ -152,11 +169,25 @@ class InfiniteCanvasController extends ChangeNotifier {
   /// Whether the viewport is in motion (any of pan/zoom/animate/decelerate).
   ///
   /// Convenience getter that combines all motion states.
-  bool get isInMotion =>
-      _isPanningNotifier.value ||
-      _isZoomingNotifier.value ||
-      _isAnimatingNotifier.value ||
-      _isDeceleratingNotifier.value;
+  bool get isInMotion => _isInMotionNotifier.value;
+
+  /// Whether the viewport is in motion, as a [ValueListenable].
+  ///
+  /// This is a [ValueListenable<bool>] that can be used with
+  /// [ValueListenableBuilder] for efficient rebuilds when motion state changes:
+  ///
+  /// ```dart
+  /// ValueListenableBuilder<bool>(
+  ///   valueListenable: controller.isInMotionValue,
+  ///   builder: (_, inMotion, child) => inMotion
+  ///     ? LowFidelityRenderer()
+  ///     : HighFidelityRenderer(),
+  /// )
+  /// ```
+  ///
+  /// Unlike [isInMotionListenable] which requires using [isInMotion] inside
+  /// the builder, this provides the value directly to the builder function.
+  ValueListenable<bool> get isInMotionValue => _isInMotionNotifier;
 
   //─────────────────────────────────────────────────────────────────────────────
   // Zoom Level (for LOD switching)
@@ -637,13 +668,7 @@ class InfiniteCanvasController extends ChangeNotifier {
   ///
   /// @nodoc
   void startMomentum(Offset velocity) {
-    if (_vsync == null) return;
-    if (!_momentumConfig.enableMomentum) return;
-
-    final clampedVelocity = _momentumConfig.clampVelocity(velocity);
-    if (clampedVelocity.distance < _momentumConfig.minVelocity) return;
-
-    _startMomentumSimulation(clampedVelocity);
+    _momentumSimulator?.start(velocity, startPan: _viewport.pan);
   }
 
   /// Start momentum animation with floor-based velocity (trackpad).
@@ -662,112 +687,17 @@ class InfiniteCanvasController extends ChangeNotifier {
     required bool hadPan,
     required Offset fallbackDirection,
   }) {
-    if (_vsync == null) return;
-    if (!_momentumConfig.shouldApplyMomentum(velocity, hadPan: hadPan)) return;
-
-    // Apply velocity floor: if below minVelocity but we panned, use minVelocity
-    final effectiveVelocity = _momentumConfig.applyVelocityFloor(
+    _momentumSimulator?.startWithFloor(
       velocity,
+      startPan: _viewport.pan,
+      hadPan: hadPan,
       fallbackDirection: fallbackDirection,
     );
-    if (effectiveVelocity == Offset.zero) return;
-
-    _startMomentumSimulation(effectiveVelocity);
-  }
-
-  /// Internal: runs the friction simulation with given velocity.
-  void _startMomentumSimulation(Offset velocity) {
-    cancelMomentum();
-
-    _isDeceleratingNotifier.value = true;
-
-    final startPan = _viewport.pan;
-
-    // Create separate simulations for X and Y
-    final simX = FrictionSimulation(
-      _momentumConfig.friction,
-      startPan.dx,
-      velocity.dx,
-    );
-    final simY = FrictionSimulation(
-      _momentumConfig.friction,
-      startPan.dy,
-      velocity.dy,
-    );
-
-    // Estimate duration based on when velocity drops below threshold
-    final durationMs = _estimateMomentumDuration(velocity);
-    final duration = Duration(milliseconds: durationMs.clamp(100, 2000));
-
-    _momentumController = AnimationController(
-      vsync: _vsync!,
-      duration: duration,
-    );
-
-    _momentumController!.addListener(() {
-      // Convert animation progress to elapsed time in seconds
-      final t = _momentumController!.value * (duration.inMilliseconds / 1000);
-
-      final rawPan = Offset(simX.x(t), simY.x(t));
-      final clampedPan = _clampPan(rawPan);
-
-      // Check if we hit bounds (clamping changed the position)
-      final hitBounds = (clampedPan - rawPan).distance > 0.001;
-      if (hitBounds) {
-        _viewport.pan = clampedPan;
-        notifyListeners();
-        cancelMomentum();
-        return;
-      }
-
-      // Check if simulation velocity has dropped below threshold
-      final vx = simX.dx(t);
-      final vy = simY.dx(t);
-      final speed = math.sqrt(vx * vx + vy * vy);
-      if (speed < _momentumConfig.minVelocity) {
-        cancelMomentum();
-        return;
-      }
-
-      _viewport.pan = clampedPan;
-      notifyListeners();
-    });
-
-    _momentumController!.addStatusListener((status) {
-      if (status == AnimationStatus.completed ||
-          status == AnimationStatus.dismissed) {
-        _isDeceleratingNotifier.value = false;
-        _momentumController?.dispose();
-        _momentumController = null;
-      }
-    });
-
-    _momentumController!.forward();
   }
 
   /// Cancel any in-progress momentum animation.
   void cancelMomentum() {
-    if (_momentumController != null) {
-      _momentumController!.stop();
-      _momentumController!.dispose();
-      _momentumController = null;
-      _isDeceleratingNotifier.value = false;
-    }
-  }
-
-  /// Estimate duration for momentum to decay below minVelocity.
-  int _estimateMomentumDuration(Offset velocity) {
-    final magnitude = velocity.distance;
-    if (magnitude < _momentumConfig.minVelocity) return 0;
-
-    // FrictionSimulation: v(t) = v0 * e^(-friction * t)
-    // Solve for t when |v(t)| = minVelocity:
-    // t = -ln(minVelocity / v0) / friction
-    final ratio = _momentumConfig.minVelocity / magnitude;
-    if (ratio >= 1) return 0;
-
-    final t = -math.log(ratio) / _momentumConfig.friction;
-    return (t * 1000).round(); // Convert to milliseconds
+    _momentumSimulator?.cancel();
   }
 
   /// Update momentum configuration.
@@ -775,6 +705,7 @@ class InfiniteCanvasController extends ChangeNotifier {
   /// @nodoc
   void updateMomentumConfig(CanvasMomentumConfig config) {
     _momentumConfig = config;
+    _momentumSimulator?.updateConfig(config);
   }
 
   //─────────────────────────────────────────────────────────────────────────────
@@ -985,6 +916,16 @@ class InfiniteCanvasController extends ChangeNotifier {
     _lastKnownViewportSize = viewportSize;
     _isAttached = true;
 
+    // Create momentum simulator
+    _momentumSimulator = MomentumSimulator(
+      vsync: vsync,
+      config: _momentumConfig,
+      onPanChanged: (pan) => _viewport.pan = pan,
+      clampPan: _clampPan,
+      onDeceleratingChanged: (v) => _isDeceleratingNotifier.value = v,
+      onUpdate: notifyListeners,
+    );
+
     // Apply initial viewport state if provided (first attach only)
     if (initialState != null) {
       _viewport.zoom = _physics.clampZoom(initialState.zoom);
@@ -999,6 +940,8 @@ class InfiniteCanvasController extends ChangeNotifier {
   /// @nodoc
   void detach() {
     cancelAnimations();
+    _momentumSimulator?.dispose();
+    _momentumSimulator = null;
     _vsync = null;
     _isAttached = false;
     // Reset motion state
@@ -1139,10 +1082,15 @@ class InfiniteCanvasController extends ChangeNotifier {
   void dispose() {
     cancelAnimations();
     _isZoomingNotifier.removeListener(_onZoomingChanged);
+    _isPanningNotifier.removeListener(_updateIsInMotion);
+    _isZoomingNotifier.removeListener(_updateIsInMotion);
+    _isAnimatingNotifier.removeListener(_updateIsInMotion);
+    _isDeceleratingNotifier.removeListener(_updateIsInMotion);
     _isPanningNotifier.dispose();
     _isZoomingNotifier.dispose();
     _isAnimatingNotifier.dispose();
     _isDeceleratingNotifier.dispose();
+    _isInMotionNotifier.dispose();
     _zoomLevelNotifier.dispose();
     super.dispose();
   }

@@ -67,5 +67,6 @@ export 'src/infinite_canvas_controller.dart';
 export 'src/initial_viewport.dart';
 export 'src/types/canvas_drag_details.dart';
 export 'src/widgets/canvas_item.dart';
+export 'src/widgets/canvas_overlay_widget.dart';
 export 'src/widgets/grid_background.dart';
 export 'src/zoom_level.dart';

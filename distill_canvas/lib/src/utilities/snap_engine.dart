@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../canvas_constants.dart';
 import '../infinite_canvas_controller.dart';
 
 /// Result of a snap calculation.
@@ -174,8 +175,8 @@ class SnapEngine {
     var snappedBounds = movingBounds;
 
     // Collect all snap candidates
-    final xSnaps = <_SnapCandidate>[];
-    final ySnaps = <_SnapCandidate>[];
+    final xSnaps = <_MoveSnapCandidate>[];
+    final ySnaps = <_MoveSnapCandidate>[];
 
     for (final other in otherBounds) {
       if (enableEdgeSnap) {
@@ -293,8 +294,10 @@ class SnapEngine {
         SnapGuide(
           axis: Axis.vertical,
           position: best.snapTo,
-          start: math.min(snappedBounds.top, best.otherBounds.top) - 10,
-          end: math.max(snappedBounds.bottom, best.otherBounds.bottom) + 10,
+          start: math.min(snappedBounds.top, best.otherBounds.top) -
+              CanvasConstants.snapGuideMargin,
+          end: math.max(snappedBounds.bottom, best.otherBounds.bottom) +
+              CanvasConstants.snapGuideMargin,
           type: best.type,
         ),
       );
@@ -310,8 +313,10 @@ class SnapEngine {
         SnapGuide(
           axis: Axis.horizontal,
           position: best.snapTo,
-          start: math.min(snappedBounds.left, best.otherBounds.left) - 10,
-          end: math.max(snappedBounds.right, best.otherBounds.right) + 10,
+          start: math.min(snappedBounds.left, best.otherBounds.left) -
+              CanvasConstants.snapGuideMargin,
+          end: math.max(snappedBounds.right, best.otherBounds.right) +
+              CanvasConstants.snapGuideMargin,
           type: best.type,
         ),
       );
@@ -477,8 +482,10 @@ class SnapEngine {
         SnapGuide(
           axis: Axis.vertical,
           position: best.snapTo,
-          start: math.min(proposedBounds.top, best.otherBounds.top) - 10,
-          end: math.max(proposedBounds.bottom, best.otherBounds.bottom) + 10,
+          start: math.min(proposedBounds.top, best.otherBounds.top) -
+              CanvasConstants.snapGuideMargin,
+          end: math.max(proposedBounds.bottom, best.otherBounds.bottom) +
+              CanvasConstants.snapGuideMargin,
           type: SnapGuideType.edge,
         ),
       );
@@ -510,8 +517,10 @@ class SnapEngine {
         SnapGuide(
           axis: Axis.horizontal,
           position: best.snapTo,
-          start: math.min(proposedBounds.left, best.otherBounds.left) - 10,
-          end: math.max(proposedBounds.right, best.otherBounds.right) + 10,
+          start: math.min(proposedBounds.left, best.otherBounds.left) -
+              CanvasConstants.snapGuideMargin,
+          end: math.max(proposedBounds.right, best.otherBounds.right) +
+              CanvasConstants.snapGuideMargin,
           type: SnapGuideType.edge,
         ),
       );
@@ -568,7 +577,7 @@ class SnapEngine {
   }
 
   void _addIfClose(
-    List<_SnapCandidate> list,
+    List<_MoveSnapCandidate> list,
     double current,
     double target,
     double threshold,
@@ -579,7 +588,7 @@ class SnapEngine {
     final distance = (current - target).abs();
     if (distance < threshold) {
       list.add(
-        _SnapCandidate(
+        _MoveSnapCandidate(
           current: current,
           snapTo: target,
           distance: distance,
@@ -601,40 +610,64 @@ class SnapEngine {
   }
 }
 
-class _SnapCandidate {
-  _SnapCandidate({
+/// Base class for snap candidates sharing common alignment data.
+///
+/// This sealed class hierarchy unifies the shared fields between move and
+/// resize snap operations, reducing code duplication while preserving
+/// type-specific data ([SnapGuideType] vs [ResizeEdge]).
+sealed class _SnapCandidateBase {
+  const _SnapCandidateBase({
     required this.current,
     required this.snapTo,
     required this.distance,
-    required this.type,
     required this.movingBounds,
     required this.otherBounds,
   });
 
+  /// Current position of the snapping edge/point.
   final double current;
+
+  /// Target position to snap to.
   final double snapTo;
+
+  /// Absolute distance between current and target.
   final double distance;
-  final SnapGuideType type;
+
+  /// Bounds of the element being moved/resized.
   final Rect movingBounds;
+
+  /// Bounds of the element being snapped to.
   final Rect otherBounds;
 }
 
-class _ResizeSnapCandidate {
-  _ResizeSnapCandidate({
-    required this.current,
-    required this.snapTo,
-    required this.distance,
-    required this.edge,
-    required this.movingBounds,
-    required this.otherBounds,
+/// Snap candidate for move operations (edge or center alignment).
+final class _MoveSnapCandidate extends _SnapCandidateBase {
+  const _MoveSnapCandidate({
+    required super.current,
+    required super.snapTo,
+    required super.distance,
+    required super.movingBounds,
+    required super.otherBounds,
+    required this.type,
   });
 
-  final double current;
-  final double snapTo;
-  final double distance;
+  /// Type of guide to render (edge vs center).
+  final SnapGuideType type;
+}
+
+/// Snap candidate for resize operations (specific edge).
+final class _ResizeSnapCandidate extends _SnapCandidateBase {
+  const _ResizeSnapCandidate({
+    required super.current,
+    required super.snapTo,
+    required super.distance,
+    required super.movingBounds,
+    required super.otherBounds,
+    required this.edge,
+  });
+
+  /// Which edge is being resized.
   final ResizeEdge edge;
-  final Rect movingBounds;
-  final Rect otherBounds;
 }
 
 /// Widget that renders snap guide lines in the overlay layer.
@@ -778,8 +811,8 @@ class _SnapGuidesPainter extends CustomPainter {
   }
 
   void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
-    const dashLength = 5.0;
-    const gapLength = 3.0;
+    const dashLength = CanvasConstants.snapGuideDashLength;
+    const gapLength = CanvasConstants.snapGuideGapLength;
 
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;
