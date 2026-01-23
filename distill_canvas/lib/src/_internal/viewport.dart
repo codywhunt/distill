@@ -51,8 +51,7 @@ class CanvasViewport {
   Matrix4 _buildTransform() {
     return Matrix4.identity()
       ..setTranslationRaw(_pan.dx, _pan.dy, 0)
-      // ignore: deprecated_member_use
-      ..scale(_zoom, _zoom);
+      ..scaleByDouble(_zoom, _zoom, 1.0, 1.0);
   }
 
   /// Convert a point from view-space (screen) to world-space (canvas).

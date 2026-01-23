@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/physics.dart';
-import 'package:flutter/scheduler.dart';
 
 import '../canvas_momentum_config.dart';
 

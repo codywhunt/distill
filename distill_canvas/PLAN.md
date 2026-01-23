@@ -134,15 +134,15 @@
 ⚠️ **Conditional Entry**: Only proceed with §3.1-3.2 if §1.0 shows 95th percentile frame time >12ms.
 If frame times are acceptable, mark §3.1-3.2 as "deferred" and proceed to cleanup items.
 
-- [ ] §3.0 **Decision checkpoint**: Review §1.0 metrics, record in Decision Log
-- [ ] §3.1 Fine-grained listenables *(conditional)*
-- [ ] §3.2 Separate ListenableBuilders per layer *(conditional)*
-- [ ] §3.3 Fix deprecated Matrix4.scale() usage
-- [ ] §3.4 GridBackground tests
-- [ ] §3.5 InitialViewport strategy tests
-- [ ] §3.6 Consider structured drag events *(defer to v2.0)*
-- [ ] §3.7 Consider bounds registration API *(defer to v2.0)*
-- [ ] §3.8 Multi-coordinate system documentation
+- [x] §3.0 **Decision checkpoint**: Review §1.0 metrics, record in Decision Log ✅
+- [~] §3.1 Fine-grained listenables *(deferred - no measured jank)*
+- [~] §3.2 Separate ListenableBuilders per layer *(deferred - no measured jank)*
+- [x] §3.3 Fix deprecated Matrix4.scale() usage ✅
+- [x] §3.4 GridBackground tests ✅
+- [x] §3.5 InitialViewport strategy tests ✅
+- [~] §3.6 Consider structured drag events *(deferred to v2.0)*
+- [~] §3.7 Consider bounds registration API *(deferred to v2.0)*
+- [x] §3.8 Multi-coordinate system documentation ✅
 
 **Gate → Complete**:
 | Requirement | Validation |
@@ -174,8 +174,9 @@ Track key decisions and their rationale:
 | 2026-01-23 | Phase 2 complete | All extractions done, 256 tests passing, widget -44% lines, controller -5% lines |
 | 2026-01-23 | Controller line target partially met | MomentumSimulator extraction adds delegation overhead; 1097 vs 984 target acceptable given complexity reduction |
 | 2026-01-23 | Use delegate interface for gesture handler | Enables clean separation while allowing widget state access; avoids circular dependencies |
-| TBD | Phase 3 entry: proceed/defer | Based on §1.0 baseline results |
-| TBD | §3.1-3.2 scope | Full/partial/skip based on metrics |
+| 2026-01-23 | Phase 3 entry: proceed with cleanup, defer §3.1-3.2 | Frame time gate criterion (>12ms) was never measured; baseline shows expected 60 rebuilds/sec which is standard Flutter behavior per best practices |
+| 2026-01-23 | Defer §3.1-3.2 (fine-grained listenables) | No evidence of jank; adds API surface without proven benefit; current single ListenableBuilder follows Flutter conventions |
+| 2026-01-23 | Phase 3 complete | §3.0 decision made, §3.3 deprecated API fixed, §3.4 GridBackground tests (34), §3.5 InitialViewport tests (39), §3.8 coordinate docs; 329 total tests passing |
 
 ---
 
