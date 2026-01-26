@@ -67,6 +67,8 @@ export 'systems/transform_system.dart';
 export 'systems/layout_system.dart';
 export 'systems/hit_test_system.dart';
 export 'systems/render_system.dart';
+export 'systems/snap_system.dart';
+export 'systems/drop_system.dart';
 
 // Flutter integration
 export 'flutter/canvas_widget.dart';
