@@ -70,8 +70,8 @@ class CanvasGestureHandler {
   CanvasGestureHandler({
     required CanvasGestureDelegate delegate,
     required FocusNode focusNode,
-  })  : _delegate = delegate,
-        _focusNode = focusNode;
+  }) : _delegate = delegate,
+       _focusNode = focusNode;
 
   final CanvasGestureDelegate _delegate;
   final FocusNode _focusNode;
@@ -89,10 +89,8 @@ class CanvasGestureHandler {
 
   // Drag state
   bool _isDragging = false;
-  Offset? _dragStartView;
   Offset? _lastDragView;
   VelocityTracker? _velocityTracker;
-  PointerDeviceKind? _dragPointerKind;
 
   // Potential drag state (before threshold exceeded)
   // This allows tap gestures to complete without interference
@@ -250,7 +248,8 @@ class CanvasGestureHandler {
     _wasMiddleMouseDown = event.buttons == kMiddleMouseButton;
 
     // Check if this is a pan gesture
-    final isPanGesture = _isSpacePressed ||
+    final isPanGesture =
+        _isSpacePressed ||
         (event.buttons == kMiddleMouseButton &&
             _gestureConfig.enableMiddleMousePan);
 
@@ -293,13 +292,13 @@ class CanvasGestureHandler {
         if (distance > threshold) {
           // NOW initialize full drag tracking
           _isDragging = true;
-          _dragStartView = _potentialDragStart;
           _lastDragView = _potentialDragStart;
-          _dragPointerKind = _potentialDragKind;
           _velocityTracker = VelocityTracker.withKind(_potentialDragKind!);
           if (_potentialDragTimestamp != null) {
-            _velocityTracker!
-                .addPosition(_potentialDragTimestamp!, _potentialDragStart!);
+            _velocityTracker!.addPosition(
+              _potentialDragTimestamp!,
+              _potentialDragStart!,
+            );
           }
           _delegate.setState(() {});
 
@@ -386,10 +385,8 @@ class CanvasGestureHandler {
       _isDragging = false;
       _delegate.setState(() {});
     }
-    _dragStartView = null;
     _lastDragView = null;
     _velocityTracker = null;
-    _dragPointerKind = null;
 
     // Clear potential drag state (allows tap gestures to complete)
     _potentialDragStart = null;
@@ -580,10 +577,7 @@ class CanvasGestureHandler {
         dy = 0;
       }
 
-      final panDelta = Offset(
-        dx * sign * sensitivity,
-        dy * sign * sensitivity,
-      );
+      final panDelta = Offset(dx * sign * sensitivity, dy * sign * sensitivity);
       _controller.panBy(panDelta);
       _delegate.notifyViewportChanged();
     }

@@ -942,7 +942,10 @@
 /Users/codyhunt/.pub-cache/hosted/pub.dev/xml-6.6.1/lib/src/xml_events/visitor.dart
 /Users/codyhunt/.pub-cache/hosted/pub.dev/xml-6.6.1/lib/xml_events.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/infinite_canvas.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/_internal/canvas_gesture_handler.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/_internal/momentum_simulator.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/_internal/viewport.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/canvas_constants.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/canvas_gesture_config.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/canvas_layers.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/canvas_momentum_config.dart
@@ -954,6 +957,7 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/utilities/snap_engine.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/utilities/spatial_index.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/widgets/canvas_item.dart
+/Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/widgets/canvas_overlay_widget.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/widgets/grid_background.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/src/zoom_level.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_canvas/lib/utilities.dart
@@ -985,7 +989,7 @@
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/spacing.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/theme.dart
 /Users/codyhunt/Documents/GitHub/distill/distill_ds/lib/tokens/typography.dart
-/Users/codyhunt/Documents/GitHub/distill/distill_editor/DOES_NOT_EXIST_RERUN_FOR_WILDCARD404650004
+/Users/codyhunt/Documents/GitHub/distill/distill_editor/DOES_NOT_EXIST_RERUN_FOR_WILDCARD241697635
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-cosmicorange.svg
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-deepblue.svg
 /Users/codyhunt/Documents/GitHub/distill/distill_editor/assets/bezels/iphone17pro-silver.svg
